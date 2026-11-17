@@ -15,8 +15,11 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import java.util.Calendar
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sin
 
 class BoopClockView @JvmOverloads constructor(
     context: Context,
@@ -163,10 +166,15 @@ class BoopClockView @JvmOverloads constructor(
             burnInOffsetY = 0f
             return
         }
-        burnInTick++
-        val phase = (burnInTick / 60) % 4
-        burnInOffsetX = when (phase) { 0 -> 4f; 1 -> -4f; 2 -> 0f; else -> 0f }
-        burnInOffsetY = when (phase) { 0 -> 0f; 1 -> 0f; 2 -> 4f; else -> -4f }
+        val density = resources.displayMetrics.density
+        // 14dp orbital shift (~38-42px on FHD+). Exceeds dot diameter so lit OLED subpixels completely clear their previous footprint.
+        val step = 14f * density
+        // Advances by 1 orbital step every minute, synchronized with minute rollover
+        val minuteEpoch = (System.currentTimeMillis() / 60_000L).toInt()
+        val phase = minuteEpoch % 12
+        val angleRad = phase * (2.0 * PI / 12.0)
+        burnInOffsetX = (cos(angleRad) * step).toFloat()
+        burnInOffsetY = (sin(angleRad) * step).toFloat()
     }
 
     override fun onDraw(canvas: Canvas) {

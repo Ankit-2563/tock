@@ -21,7 +21,7 @@ data class ColorTheme(
         val CLASSIC = ColorTheme(
             id = "classic",
             name = "Nothing Classic (Theme 1)",
-            background = Color.parseColor("#1A1D1C"),
+            background = Color.parseColor("#000000"),
             digitColor = Color.parseColor("#FCFAFE"),
             colonColor = Color.parseColor("#D71921"),
             metaColor = Color.parseColor("#FCFAFE"),
