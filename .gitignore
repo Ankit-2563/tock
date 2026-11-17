@@ -1,0 +1,16 @@
+# OSX
+.DS_Store
+
+# Android/IntelliJ
+build/
+**/build/
+.idea
+.gradle
+**/local.properties
+*.iml
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
+.kotlin/
+*.apk
