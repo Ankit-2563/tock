@@ -220,17 +220,45 @@ class BoopClockView @JvmOverloads constructor(
 
         val digitWidth = 5 * dotSize + 4 * gap
         val digitHeight = 7 * dotSize + 6 * gap
-        val colonWidth = dotSize
 
-        // Total width of: Digit1 + DigitGap + Digit2 + ColonGap + Colon + ColonGap + Digit3 + DigitGap + Digit4
-        val totalWidth = (digitWidth * 4) + (digitGap * 2) + (colonGap * 2) + colonWidth
-        val startX = (w - totalWidth) / 2f
+        // Optical column bounds for each digit to ensure perfectly symmetric colon spacing
+        val d1LeftCol = getLeftmostCol(d1)
+        val d2RightCol = getRightmostCol(d2)
+        val d3LeftCol = getLeftmostCol(d3)
+        val d4RightCol = getRightmostCol(d4)
+
+        // Raw layout coordinates
+        val rawX1 = 0f
+        val rawX2 = rawX1 + digitWidth + digitGap
+        val d2RightDotX = rawX2 + d2RightCol * (dotSize + gap) + dotRadius
+
+        // Visual distance from d2 dot to colon center, and from colon center to d3 dot
+        // This guarantees the spacing on both sides of the colon is EQUAL AT ALL TIMES.
+        val colonSpacing = max(10f * density, dotSize * 1.55f)
+
+        val colonCenterX = d2RightDotX + colonSpacing
+        val d3LeftDotX = colonCenterX + colonSpacing
+        val rawX3 = d3LeftDotX - (d3LeftCol * (dotSize + gap) + dotRadius)
+        val rawX4 = rawX3 + digitWidth + digitGap
+
+        val d1LeftDotX = rawX1 + d1LeftCol * (dotSize + gap) + dotRadius
+        val d4RightDotX = rawX4 + d4RightCol * (dotSize + gap) + dotRadius
+
+        // Center the full visual clock horizontally
+        val totalVisualWidth = d4RightDotX - d1LeftDotX
+        val visualStartX = (w - totalVisualWidth) / 2f
+        val shiftX = visualStartX - d1LeftDotX
+
+        val x1 = rawX1 + shiftX
+        val x2 = rawX2 + shiftX
+        val finalColonCenterX = colonCenterX + shiftX
+        val x3 = rawX3 + shiftX
+        val x4 = rawX4 + shiftX
 
         // Center digits vertically in available area below header
         val startY = headerTotalHeight + (h - headerTotalHeight - digitHeight) / 2f
 
         // ── Header (Date, Battery, AM/PM) ───────────────────────
-        // Left Header aligns directly with the first digit (at least 64px from edge)
         val days = arrayOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
         val months = arrayOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
         val dayStr = days[cal.get(Calendar.DAY_OF_WEEK) - 1]
@@ -238,7 +266,7 @@ class BoopClockView @JvmOverloads constructor(
         val dateNum = cal.get(Calendar.DAY_OF_MONTH)
         val dateStr = "$dayStr $monthStr $dateNum"
 
-        var leftCurX = startX
+        var leftCurX = visualStartX - dotRadius
         canvas.drawText(dateStr, leftCurX, headerY, metaPaint)
         leftCurX += metaPaint.measureText(dateStr)
 
@@ -258,40 +286,53 @@ class BoopClockView @JvmOverloads constructor(
             canvas.drawText(battStr, leftCurX, headerY, metaPaint)
         }
 
-        // Right Header: AM/PM aligns with the rightmost edge of the last digit
+        // Right Header: AM/PM aligns with the rightmost visible dot
         if (period != null) {
             val periodWidth = periodPaint.measureText(period)
-            val periodX = startX + totalWidth - periodWidth
+            val periodX = (visualStartX + totalVisualWidth + dotRadius) - periodWidth
             canvas.drawText(period, periodX, headerY, periodPaint)
         }
 
         // ── Main Digits ─────────────────────────────────────────
-        var curX = startX
-
         // Hour Digit 1
-        drawDigit(canvas, d1, curX, startY, dotSize, gap)
-        curX += digitWidth + digitGap
+        drawDigit(canvas, d1, x1, startY, dotSize, gap)
 
         // Hour Digit 2
-        drawDigit(canvas, d2, curX, startY, dotSize, gap)
-        curX += digitWidth + colonGap
+        drawDigit(canvas, d2, x2, startY, dotSize, gap)
 
-        // 2-Dot Colon (centered vertically at row 2 and row 4)
-        val colonCenterX = curX + colonWidth / 2f
+        // 2-Dot Colon (Optical center guaranteed equal spacing to left and right digits)
         val colonDot1CenterY = startY + (2 * (dotSize + gap)) + dotRadius
         val colonDot2CenterY = startY + (4 * (dotSize + gap)) + dotRadius
-        canvas.drawCircle(colonCenterX, colonDot1CenterY, dotRadius, colonPaint)
-        canvas.drawCircle(colonCenterX, colonDot2CenterY, dotRadius, colonPaint)
-        curX += colonWidth + colonGap
+        canvas.drawCircle(finalColonCenterX, colonDot1CenterY, dotRadius, colonPaint)
+        canvas.drawCircle(finalColonCenterX, colonDot2CenterY, dotRadius, colonPaint)
 
         // Minute Digit 1
-        drawDigit(canvas, d3, curX, startY, dotSize, gap)
-        curX += digitWidth + digitGap
+        drawDigit(canvas, d3, x3, startY, dotSize, gap)
 
         // Minute Digit 2
-        drawDigit(canvas, d4, curX, startY, dotSize, gap)
+        drawDigit(canvas, d4, x4, startY, dotSize, gap)
 
         canvas.restore()
+    }
+
+    private fun getLeftmostCol(digit: Int): Int {
+        val pattern = DotMatrixFont.getDigit(digit)
+        for (col in 0 until 5) {
+            for (row in 0 until 7) {
+                if (pattern[row][col]) return col
+            }
+        }
+        return 0
+    }
+
+    private fun getRightmostCol(digit: Int): Int {
+        val pattern = DotMatrixFont.getDigit(digit)
+        for (col in 4 downTo 0) {
+            for (row in 0 until 7) {
+                if (pattern[row][col]) return col
+            }
+        }
+        return 4
     }
 
     private fun drawDigit(canvas: Canvas, digit: Int, x: Float, y: Float, dotSize: Float, gap: Float) {

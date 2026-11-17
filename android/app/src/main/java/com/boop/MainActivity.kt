@@ -73,27 +73,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAutoLaunchPermissions() {
-        // 1. Android 13+ Notification permission
+        // Android 13+ Notification permission (needed for full-screen wake notifications)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 101)
             }
-        }
-
-        // 2. "Display over other apps" (allows background auto-launch when charging/idle)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            AlertDialog.Builder(this)
-                .setTitle("Enable Auto-Activate on Charge")
-                .setMessage("To allow Boop to open automatically when placed on charge or idle, please grant 'Display over other apps'.")
-                .setPositiveButton("Grant Permission") { _, _ ->
-                    val intent = Intent(
-                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:$packageName")
-                    )
-                    startActivity(intent)
-                }
-                .setNegativeButton("Later", null)
-                .show()
         }
     }
 
