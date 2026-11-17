@@ -167,12 +167,25 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
         addDivider()
 
-        // Auto-Launch on Charge + Horizontal
+        // Auto-Launch on Charge & Idle
+        val canOverlay = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            Settings.canDrawOverlays(ctx)
+        } else true
+
         addSwitchRow(
-            "Auto-Activate on Charge",
-            "Launches Boop when charger connected in horizontal dock/idle position",
+            "Auto-Activate on Charge & Idle",
+            if (canOverlay) "Activates Boop whenever phone is on charger or goes idle" else "Requires 'Display over other apps' to wake screen (tap to grant)",
             BoopPreferences.isAutoLaunch(ctx)
-        ) { BoopPreferences.setAutoLaunch(ctx, it) }
+        ) {
+            if (!canOverlay && it && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    android.net.Uri.parse("package:${ctx.packageName}")
+                )
+                startActivity(intent)
+            }
+            BoopPreferences.setAutoLaunch(ctx, it)
+        }
 
         addDivider()
 
