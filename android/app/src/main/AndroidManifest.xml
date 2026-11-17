@@ -22,7 +22,7 @@
         android:screenOrientation="sensorLandscape"
         android:showWhenLocked="true"
         android:turnScreenOn="true"
-        android:theme="@style/BoopFullscreen">
+        android:theme="@style/TockFullscreen">
         <intent-filter>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
@@ -31,8 +31,8 @@
 
       <!-- Native Android Screen Saver (DreamService) for StandBy charging dock mode -->
       <service
-        android:name=".BoopDreamService"
-        android:label="Boop StandBy Clock"
+        android:name=".TockDreamService"
+        android:label="Tock StandBy Clock"
         android:permission="android.permission.BIND_DREAM_SERVICE"
         android:exported="true">
         <intent-filter>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="boop_background">#1A1D1C</color>
-    <color name="boop_digit">#FCFAFE</color>
-    <color name="boop_accent">#D71921</color>
+    <color name="tock_background">#000000</color>
+    <color name="tock_digit">#FCFAFE</color>
+    <color name="tock_accent">#D71921</color>
 </resources>

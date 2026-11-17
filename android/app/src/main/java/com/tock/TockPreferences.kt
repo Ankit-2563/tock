@@ -1,10 +1,10 @@
-package com.boop
+package com.tock
 
 import android.content.Context
 import android.content.SharedPreferences
 
-object BoopPreferences {
-    private const val PREFS_NAME = "boop_prefs"
+object TockPreferences {
+    private const val PREFS_NAME = "tock_prefs"
 
     private const val KEY_THEME = "theme"
     private const val KEY_USE_24H = "use_24h"

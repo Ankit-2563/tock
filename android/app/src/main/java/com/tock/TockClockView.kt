@@ -1,4 +1,4 @@
-package com.boop
+package com.tock
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -21,7 +21,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
-class BoopClockView @JvmOverloads constructor(
+class TockClockView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0

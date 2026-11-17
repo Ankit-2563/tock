@@ -1,4 +1,4 @@
-package com.boop
+package com.tock
 
 import android.app.NotificationManager
 import android.content.Context
@@ -10,9 +10,9 @@ import android.view.WindowManager
  * Selected in Settings → Display → Screen Saver.
  * Activates automatically and natively when the device is idle and charging.
  */
-class BoopDreamService : DreamService() {
+class TockDreamService : DreamService() {
 
-    private lateinit var clockView: BoopClockView
+    private lateinit var clockView: TockClockView
     private var dndWasEnabled = false
     private var previousInterruptionFilter = NotificationManager.INTERRUPTION_FILTER_ALL
 
@@ -20,16 +20,16 @@ class BoopDreamService : DreamService() {
         super.onAttachedToWindow()
         isFullscreen = true
         isInteractive = false
-        isScreenBright = !BoopPreferences.isLowPower(this)
+        isScreenBright = !TockPreferences.isLowPower(this)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        clockView = BoopClockView(this)
-        val theme = ColorTheme.byId(BoopPreferences.getTheme(this))
+        clockView = TockClockView(this)
+        val theme = ColorTheme.byId(TockPreferences.getTheme(this))
         clockView.setTheme(theme)
-        clockView.set24Hour(BoopPreferences.is24Hour(this))
-        clockView.setBurnInProtection(BoopPreferences.isBurnInProtection(this))
-        clockView.setLowPower(BoopPreferences.isLowPower(this))
+        clockView.set24Hour(TockPreferences.is24Hour(this))
+        clockView.setBurnInProtection(TockPreferences.isBurnInProtection(this))
+        clockView.setLowPower(TockPreferences.isLowPower(this))
 
         setContentView(clockView)
     }
@@ -45,7 +45,7 @@ class BoopDreamService : DreamService() {
     }
 
     private fun enableDnd() {
-        if (!BoopPreferences.isDndEnabled(this)) return
+        if (!TockPreferences.isDndEnabled(this)) return
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (!nm.isNotificationPolicyAccessGranted) return
         previousInterruptionFilter = nm.currentInterruptionFilter

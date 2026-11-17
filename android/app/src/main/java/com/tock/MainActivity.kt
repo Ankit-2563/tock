@@ -1,4 +1,4 @@
-package com.boop
+package com.tock
 
 import android.Manifest
 import android.app.KeyguardManager
@@ -21,7 +21,7 @@ import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var clockView: BoopClockView
+    private lateinit var clockView: TockClockView
     private var dndWasEnabled = false
     private var previousInterruptionFilter = NotificationManager.INTERRUPTION_FILTER_ALL
 
@@ -47,7 +47,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         // Create clock view
-        clockView = BoopClockView(this)
+        clockView = TockClockView(this)
         setContentView(clockView)
 
         // Apply saved settings
@@ -70,14 +70,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refreshSettings() {
-        val theme = ColorTheme.byId(BoopPreferences.getTheme(this))
+        val theme = ColorTheme.byId(TockPreferences.getTheme(this))
         clockView.setTheme(theme)
-        clockView.set24Hour(BoopPreferences.is24Hour(this))
-        clockView.setBurnInProtection(BoopPreferences.isBurnInProtection(this))
-        clockView.setLowPower(BoopPreferences.isLowPower(this))
+        clockView.set24Hour(TockPreferences.is24Hour(this))
+        clockView.setBurnInProtection(TockPreferences.isBurnInProtection(this))
+        clockView.setLowPower(TockPreferences.isLowPower(this))
 
         val lp = window.attributes
-        if (BoopPreferences.isLowPower(this)) {
+        if (TockPreferences.isLowPower(this)) {
             lp.screenBrightness = 0.01f
         } else {
             lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun enableDnd() {
-        if (!BoopPreferences.isDndEnabled(this)) return
+        if (!TockPreferences.isDndEnabled(this)) return
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (!nm.isNotificationPolicyAccessGranted) {
             return

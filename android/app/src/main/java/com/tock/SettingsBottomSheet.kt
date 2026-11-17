@@ -1,4 +1,4 @@
-package com.boop
+package com.tock
 
 import android.app.NotificationManager
 import android.content.Context
@@ -36,7 +36,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
         // Title
         content.addView(TextView(ctx).apply {
-            text = "BOOP SETTINGS"
+            text = "TOCK SETTINGS"
             typeface = nothingFont
             textSize = 22f
             setTextColor(Color.parseColor("#FCFAFE"))
@@ -52,7 +52,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             setPadding(0, 0, 0, 12)
         })
 
-        val currentThemeId = BoopPreferences.getTheme(ctx)
+        val currentThemeId = TockPreferences.getTheme(ctx)
         val themeRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
         for (t in ColorTheme.ALL) {
             val isSelected = t.id == currentThemeId
@@ -68,7 +68,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
                 setTextColor(if (isSelected) Color.WHITE else Color.parseColor("#FCFAFE"))
                 layoutParams = LinearLayout.LayoutParams(-2, -2).apply { setMargins(0, 0, 16, 0) }
                 setOnClickListener {
-                    BoopPreferences.setTheme(ctx, t.id)
+                    TockPreferences.setTheme(ctx, t.id)
                     onSettingsChanged?.invoke()
                     dismiss()
                 }
@@ -106,8 +106,8 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         }
 
         divider()
-        switchRow("24-Hour Clock", "Display 24-hour time or 12-hour with AM/PM", BoopPreferences.is24Hour(ctx)) {
-            BoopPreferences.set24Hour(ctx, it)
+        switchRow("24-Hour Clock", "Display 24-hour time or 12-hour with AM/PM", TockPreferences.is24Hour(ctx)) {
+            TockPreferences.set24Hour(ctx, it)
         }
 
         divider()
@@ -127,7 +127,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             }
         })
         content.addView(TextView(ctx).apply {
-            text = "Select 'Boop StandBy Clock' → 'When to start: While charging' for native dock mode."
+            text = "Select 'Tock StandBy Clock' → 'When to start: While charging' for native dock mode."
             textSize = 12f
             setTextColor(Color.parseColor("#8A8D8C"))
             setPadding(0, 0, 0, 12)
@@ -136,19 +136,19 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         divider()
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val hasDnd = nm.isNotificationPolicyAccessGranted
-        switchRow("Do Not Disturb", if (hasDnd) "Silence notifications while active" else "Requires permission to silence (tap to grant)", BoopPreferences.isDndEnabled(ctx)) {
+        switchRow("Do Not Disturb", if (hasDnd) "Silence notifications while active" else "Requires permission to silence (tap to grant)", TockPreferences.isDndEnabled(ctx)) {
             if (!hasDnd && it) startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
-            BoopPreferences.setDndEnabled(ctx, it)
+            TockPreferences.setDndEnabled(ctx, it)
         }
 
         divider()
-        switchRow("OLED Burn-in Protection", "Shifts pixels subtly every 60s to protect AMOLED", BoopPreferences.isBurnInProtection(ctx)) {
-            BoopPreferences.setBurnInProtection(ctx, it)
+        switchRow("OLED Burn-in Protection", "Shifts pixels subtly every 60s to protect AMOLED", TockPreferences.isBurnInProtection(ctx)) {
+            TockPreferences.setBurnInProtection(ctx, it)
         }
 
         divider()
-        switchRow("Low Power Mode", "Dims display brightness and reduces tick frequency", BoopPreferences.isLowPower(ctx)) {
-            BoopPreferences.setLowPower(ctx, it)
+        switchRow("Low Power Mode", "Dims display brightness and reduces tick frequency", TockPreferences.isLowPower(ctx)) {
+            TockPreferences.setLowPower(ctx, it)
         }
 
         return root

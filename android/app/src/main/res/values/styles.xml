@@ -5,13 +5,13 @@
     </style>
 
     <!-- Fullscreen theme for the clock activity -->
-    <style name="BoopFullscreen" parent="Theme.AppCompat.NoActionBar">
+    <style name="TockFullscreen" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowContentOverlay">@null</item>
-        <item name="android:windowBackground">@color/boop_background</item>
-        <item name="android:navigationBarColor">@color/boop_background</item>
-        <item name="android:statusBarColor">@color/boop_background</item>
+        <item name="android:windowBackground">@color/tock_background</item>
+        <item name="android:navigationBarColor">@color/tock_background</item>
+        <item name="android:statusBarColor">@color/tock_background</item>
     </style>
 
 </resources>
