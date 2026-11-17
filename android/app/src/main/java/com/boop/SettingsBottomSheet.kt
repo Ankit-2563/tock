@@ -167,10 +167,9 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
 
         addDivider()
 
-        // ── Native Screen Saver Button (Recommended for Nothing Phone / Android) ──
+        // ── Native Screen Saver (Option A: 100% Native StandBy) ──
         val screenSaverBtn = Button(ctx).apply {
-            text = "★ Enable as Screen Saver (Recommended)"
-            setBackgroundColor(Color.parseColor("#1E2221"))
+            text = "★ Configure Screen Saver (Auto-Start on Charge)"
             setTextColor(Color.parseColor("#FCFAFE"))
             val btnBg = GradientDrawable().apply {
                 setColor(Color.parseColor("#1E2221"))
@@ -181,7 +180,7 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(0, 16, 0, 16) }
+            ).apply { setMargins(0, 16, 0, 12) }
             setOnClickListener {
                 try {
                     startActivity(Intent(Settings.ACTION_DREAM_SETTINGS))
@@ -195,45 +194,12 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         content.addView(screenSaverBtn)
 
         val screenSaverNote = TextView(ctx).apply {
-            text = "Recommended: Works natively with 0 permissions. In Screen Saver settings, select 'Boop StandBy Clock' and 'When to start: While charging'."
+            text = "Tap above → select 'Boop StandBy Clock' → set 'When to start: While charging'.\nActivates natively when idle on charger without extra permissions or battery drain."
             textSize = 12f
             setTextColor(Color.parseColor("#8A8D8C"))
             setPadding(0, 0, 0, 16)
         }
         content.addView(screenSaverNote)
-
-        addDivider()
-
-        // Auto-Launch on Charge & Idle
-        val canOverlay = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            Settings.canDrawOverlays(ctx)
-        } else true
-
-        addSwitchRow(
-            "Auto-Activate on Charge & Idle",
-            if (canOverlay) "Activates Boop whenever phone is plugged into charger or goes idle"
-            else "Requires 'Display over other apps' (see tip below)",
-            BoopPreferences.isAutoLaunch(ctx)
-        ) {
-            if (!canOverlay && it && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                val intent = Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    android.net.Uri.parse("package:${ctx.packageName}")
-                )
-                startActivity(intent)
-            }
-            BoopPreferences.setAutoLaunch(ctx, it)
-        }
-
-        if (!canOverlay) {
-            val tipText = TextView(ctx).apply {
-                text = "Tip for Android 13/14+:\nIf Android says 'App was denied access', go to App Info (long press Boop icon) → tap 3 dots (⋮) top right → 'Allow restricted settings' → then grant permission."
-                textSize = 11f
-                setTextColor(Color.parseColor("#FFA726"))
-                setPadding(0, 4, 0, 12)
-            }
-            content.addView(tipText)
-        }
 
         addDivider()
 

@@ -67,18 +67,6 @@ class MainActivity : AppCompatActivity() {
 
         // Enable DND
         enableDnd()
-
-        // Request runtime permissions needed for auto-activation
-        checkAutoLaunchPermissions()
-    }
-
-    private fun checkAutoLaunchPermissions() {
-        // Android 13+ Notification permission (needed for full-screen wake notifications)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 101)
-            }
-        }
     }
 
     private fun refreshSettings() {
