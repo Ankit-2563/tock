@@ -218,7 +218,7 @@ class BoopClockView @JvmOverloads constructor(
 
         val sidePadding = if (isLandscape) max(64f * density, w * 0.08f) else max(32f * density, w * 0.05f)
         val availableW = w - sidePadding * 2f
-        val availableH = h * (if (isLandscape) 0.62f else 0.42f)
+        val availableH = h * (if (isLandscape) 0.74f else 0.52f)
 
         // Measure with reference size
         val testSize = 250f * density
@@ -247,7 +247,7 @@ class BoopClockView @JvmOverloads constructor(
 
         val fontMetrics = poppinsPaint.fontMetrics
         val textHeight = fontMetrics.descent - fontMetrics.ascent
-        val baselineY = (h / 2f) + (textHeight / 2f) - fontMetrics.descent + (if (isLandscape) 10f * density else 0f)
+        val baselineY = (h / 2f) + (textHeight / 2f) - fontMetrics.descent
 
         // Draw digits in Poppins font
         canvas.drawText(timeStr, startX, baselineY, poppinsPaint)
@@ -256,40 +256,6 @@ class BoopClockView @JvmOverloads constructor(
         if (period != null) {
             val amPmX = startX + timeWidth + amPmGap
             canvas.drawText(period, amPmX, baselineY, poppinsAmPmPaint)
-        }
-
-        // Top Header: Date & Battery in Poppins font
-        val metaFontSize = max(13f * density, min(w, h) * 0.038f)
-        metaPaint.textSize = metaFontSize
-        metaPaint.typeface = poppinsFont
-
-        val headerTop = if (isLandscape) 28f * density else 48f * density
-        val headerY = headerTop + metaFontSize
-
-        val days = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-        val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-        val dayStr = days[cal.get(Calendar.DAY_OF_WEEK) - 1]
-        val monthStr = months[cal.get(Calendar.MONTH)]
-        val dateNum = cal.get(Calendar.DAY_OF_MONTH)
-        val dateStr = "$dayStr, $monthStr $dateNum"
-
-        var leftCurX = startX
-        canvas.drawText(dateStr, leftCurX, headerY, metaPaint)
-        leftCurX += metaPaint.measureText(dateStr)
-
-        if (batteryPercent >= 0) {
-            val sep = "  •  "
-            canvas.drawText(sep, leftCurX, headerY, metaPaint)
-            leftCurX += metaPaint.measureText(sep)
-
-            if (isCharging) {
-                val boltHeight = metaFontSize * 1.1f
-                val boltTop = headerY - metaFontSize * 0.9f
-                val boltWidth = ChargingBolt.draw(canvas, leftCurX + 2f, boltTop, boltHeight, boltPaint)
-                leftCurX += boltWidth + 8f
-            }
-
-            canvas.drawText("$batteryPercent%", leftCurX, headerY, metaPaint)
         }
     }
 
