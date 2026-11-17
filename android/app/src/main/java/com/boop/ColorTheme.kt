@@ -2,6 +2,11 @@ package com.boop
 
 import android.graphics.Color
 
+enum class ThemeStyle {
+    DOT_MATRIX,
+    POPPINS
+}
+
 data class ColorTheme(
     val id: String,
     val name: String,
@@ -9,7 +14,8 @@ data class ColorTheme(
     val digitColor: Int,
     val colonColor: Int,
     val metaColor: Int,
-    val periodColor: Int
+    val periodColor: Int,
+    val style: ThemeStyle = ThemeStyle.DOT_MATRIX
 ) {
     companion object {
         val CLASSIC = ColorTheme(
@@ -19,7 +25,18 @@ data class ColorTheme(
             digitColor = Color.parseColor("#FCFAFE"),
             colonColor = Color.parseColor("#D71921"),
             metaColor = Color.parseColor("#FCFAFE"),
-            periodColor = Color.parseColor("#D71921")
+            periodColor = Color.parseColor("#D71921"),
+            style = ThemeStyle.DOT_MATRIX
+        )
+        val POPPINS = ColorTheme(
+            id = "poppins",
+            name = "Poppins Clean (Theme 2)",
+            background = Color.parseColor("#000000"),
+            digitColor = Color.parseColor("#E6E6E6"),
+            colonColor = Color.parseColor("#E6E6E6"),
+            metaColor = Color.parseColor("#E6E6E6"),
+            periodColor = Color.parseColor("#FFFFFF"),
+            style = ThemeStyle.POPPINS
         )
         val OLED = ColorTheme(
             id = "oled",
@@ -28,7 +45,8 @@ data class ColorTheme(
             digitColor = Color.parseColor("#FCFAFE"),
             colonColor = Color.parseColor("#D71921"),
             metaColor = Color.parseColor("#FCFAFE"),
-            periodColor = Color.parseColor("#D71921")
+            periodColor = Color.parseColor("#D71921"),
+            style = ThemeStyle.DOT_MATRIX
         )
         val NIGHT = ColorTheme(
             id = "night",
@@ -37,7 +55,8 @@ data class ColorTheme(
             digitColor = Color.parseColor("#D71921"),
             colonColor = Color.parseColor("#D71921"),
             metaColor = Color.parseColor("#D71921"),
-            periodColor = Color.parseColor("#D71921")
+            periodColor = Color.parseColor("#D71921"),
+            style = ThemeStyle.DOT_MATRIX
         )
         val MONO = ColorTheme(
             id = "monochrome",
@@ -46,7 +65,8 @@ data class ColorTheme(
             digitColor = Color.parseColor("#FCFAFE"),
             colonColor = Color.parseColor("#FCFAFE"),
             metaColor = Color.parseColor("#FCFAFE"),
-            periodColor = Color.parseColor("#FCFAFE")
+            periodColor = Color.parseColor("#FCFAFE"),
+            style = ThemeStyle.DOT_MATRIX
         )
         val AMBER = ColorTheme(
             id = "amber",
@@ -55,7 +75,8 @@ data class ColorTheme(
             digitColor = Color.parseColor("#FFA726"),
             colonColor = Color.parseColor("#FF7043"),
             metaColor = Color.parseColor("#FFA726"),
-            periodColor = Color.parseColor("#FF7043")
+            periodColor = Color.parseColor("#FF7043"),
+            style = ThemeStyle.DOT_MATRIX
         )
         val EMERALD = ColorTheme(
             id = "emerald",
@@ -64,10 +85,11 @@ data class ColorTheme(
             digitColor = Color.parseColor("#4ADE80"),
             colonColor = Color.parseColor("#22C55E"),
             metaColor = Color.parseColor("#4ADE80"),
-            periodColor = Color.parseColor("#22C55E")
+            periodColor = Color.parseColor("#22C55E"),
+            style = ThemeStyle.DOT_MATRIX
         )
 
-        val ALL = listOf(CLASSIC, OLED, NIGHT, MONO, AMBER, EMERALD)
+        val ALL = listOf(CLASSIC, POPPINS, OLED, NIGHT, MONO, AMBER, EMERALD)
 
         fun byId(id: String): ColorTheme = ALL.firstOrNull { it.id == id } ?: CLASSIC
     }

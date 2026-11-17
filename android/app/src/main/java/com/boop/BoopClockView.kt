@@ -31,6 +31,9 @@ class BoopClockView @JvmOverloads constructor(
     private val metaPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val periodPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
+    private val poppinsPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val poppinsAmPmPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
     // ── State ───────────────────────────────────────────────────
     private var theme: ColorTheme = ColorTheme.CLASSIC
     private var use24Hour = true
@@ -45,8 +48,9 @@ class BoopClockView @JvmOverloads constructor(
     private var burnInOffsetY = 0f
     private var burnInTick = 0
 
-    // Font
+    // Fonts
     private val nothingFont: Typeface = Typeface.createFromAsset(context.assets, "fonts/NothingFont5x7.ttf")
+    private val poppinsFont: Typeface = Typeface.createFromAsset(context.assets, "fonts/Poppins-Regular.ttf")
 
     // Gesture detector for opening settings (tap or long press)
     var onOpenSettingsListener: (() -> Unit)? = null
@@ -67,7 +71,6 @@ class BoopClockView @JvmOverloads constructor(
         override fun run() {
             updateBurnIn()
             invalidate()
-            // Tick every second (or every 30s in low-power mode)
             handler.postDelayed(this, if (lowPower) 30_000L else 1_000L)
         }
     }
@@ -88,8 +91,6 @@ class BoopClockView @JvmOverloads constructor(
     }
 
     init {
-        metaPaint.typeface = nothingFont
-        periodPaint.typeface = nothingFont
         applyTheme()
     }
 
@@ -128,6 +129,15 @@ class BoopClockView @JvmOverloads constructor(
         boltPaint.style = Paint.Style.FILL
         metaPaint.color = theme.metaColor
         periodPaint.color = theme.periodColor
+
+        val activeFont = if (theme.style == ThemeStyle.POPPINS) poppinsFont else nothingFont
+        metaPaint.typeface = activeFont
+        periodPaint.typeface = activeFont
+
+        poppinsPaint.typeface = poppinsFont
+        poppinsPaint.color = theme.digitColor
+        poppinsAmPmPaint.typeface = poppinsFont
+        poppinsAmPmPaint.color = theme.periodColor
     }
 
     override fun onAttachedToWindow() {
@@ -166,12 +176,10 @@ class BoopClockView @JvmOverloads constructor(
 
         val w = width.toFloat()
         val h = height.toFloat()
-        val isLandscape = w > h
 
         val cal = Calendar.getInstance()
         val rawHour = cal.get(Calendar.HOUR_OF_DAY)
         val minute = cal.get(Calendar.MINUTE)
-        val second = cal.get(Calendar.SECOND)
 
         val hour: Int
         val period: String?
@@ -184,13 +192,125 @@ class BoopClockView @JvmOverloads constructor(
             period = if (rawHour >= 12) "PM" else "AM"
         }
 
+        if (theme.style == ThemeStyle.POPPINS) {
+            drawPoppinsClock(canvas, w, h, hour, minute, period, cal)
+        } else {
+            drawDotMatrixClock(canvas, w, h, hour, minute, period, cal)
+        }
+
+        canvas.restore()
+    }
+
+    // ── Theme 2: Poppins Clean Typography Clock ──────────────────
+    private fun drawPoppinsClock(
+        canvas: Canvas,
+        w: Float,
+        h: Float,
+        hour: Int,
+        minute: Int,
+        period: String?,
+        cal: Calendar
+    ) {
+        val density = resources.displayMetrics.density
+        val isLandscape = w > h
+
+        val timeStr = String.format("%02d:%02d", hour, minute)
+
+        val sidePadding = if (isLandscape) max(64f * density, w * 0.08f) else max(32f * density, w * 0.05f)
+        val availableW = w - sidePadding * 2f
+        val availableH = h * (if (isLandscape) 0.62f else 0.42f)
+
+        // Measure with reference size
+        val testSize = 250f * density
+        poppinsPaint.textSize = testSize
+        poppinsAmPmPaint.textSize = testSize * 0.29f
+
+        val rawTimeW = poppinsPaint.measureText(timeStr)
+        val rawAmW = if (period != null) poppinsAmPmPaint.measureText(period) + 16f * density else 0f
+        val rawTotalW = rawTimeW + rawAmW
+
+        val scaleW = availableW / rawTotalW
+        val scaleH = availableH / (testSize * 0.72f)
+        val scale = min(scaleW, scaleH)
+
+        val mainFontSize = testSize * scale
+        val amPmFontSize = mainFontSize * 0.29f
+        poppinsPaint.textSize = mainFontSize
+        poppinsAmPmPaint.textSize = amPmFontSize
+
+        val timeWidth = poppinsPaint.measureText(timeStr)
+        val amPmGap = 16f * density * scale
+        val amPmWidth = if (period != null) poppinsAmPmPaint.measureText(period) else 0f
+        val totalBlockW = timeWidth + (if (period != null) amPmGap + amPmWidth else 0f)
+
+        val startX = (w - totalBlockW) / 2f
+
+        val fontMetrics = poppinsPaint.fontMetrics
+        val textHeight = fontMetrics.descent - fontMetrics.ascent
+        val baselineY = (h / 2f) + (textHeight / 2f) - fontMetrics.descent + (if (isLandscape) 10f * density else 0f)
+
+        // Draw digits in Poppins font
+        canvas.drawText(timeStr, startX, baselineY, poppinsPaint)
+
+        // Draw "AM" or "PM" sitting at the baseline of the digits
+        if (period != null) {
+            val amPmX = startX + timeWidth + amPmGap
+            canvas.drawText(period, amPmX, baselineY, poppinsAmPmPaint)
+        }
+
+        // Top Header: Date & Battery in Poppins font
+        val metaFontSize = max(13f * density, min(w, h) * 0.038f)
+        metaPaint.textSize = metaFontSize
+        metaPaint.typeface = poppinsFont
+
+        val headerTop = if (isLandscape) 28f * density else 48f * density
+        val headerY = headerTop + metaFontSize
+
+        val days = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+        val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+        val dayStr = days[cal.get(Calendar.DAY_OF_WEEK) - 1]
+        val monthStr = months[cal.get(Calendar.MONTH)]
+        val dateNum = cal.get(Calendar.DAY_OF_MONTH)
+        val dateStr = "$dayStr, $monthStr $dateNum"
+
+        var leftCurX = startX
+        canvas.drawText(dateStr, leftCurX, headerY, metaPaint)
+        leftCurX += metaPaint.measureText(dateStr)
+
+        if (batteryPercent >= 0) {
+            val sep = "  •  "
+            canvas.drawText(sep, leftCurX, headerY, metaPaint)
+            leftCurX += metaPaint.measureText(sep)
+
+            if (isCharging) {
+                val boltHeight = metaFontSize * 1.1f
+                val boltTop = headerY - metaFontSize * 0.9f
+                val boltWidth = ChargingBolt.draw(canvas, leftCurX + 2f, boltTop, boltHeight, boltPaint)
+                leftCurX += boltWidth + 8f
+            }
+
+            canvas.drawText("$batteryPercent%", leftCurX, headerY, metaPaint)
+        }
+    }
+
+    // ── Theme 1: Nothing 5x7 Dot Matrix Clock ────────────────────
+    private fun drawDotMatrixClock(
+        canvas: Canvas,
+        w: Float,
+        h: Float,
+        hour: Int,
+        minute: Int,
+        period: String?,
+        cal: Calendar
+    ) {
+        val isLandscape = w > h
+        val density = resources.displayMetrics.density
+
         val d1 = hour / 10
         val d2 = hour % 10
         val d3 = minute / 10
         val d4 = minute % 10
 
-        // ── Layout calculations with generous side padding (at least 64px/dp) ──
-        val density = resources.displayMetrics.density
         val minSidePadding = max(64f, 64f * density)
         val sidePadding = if (isLandscape) max(minSidePadding, w * 0.085f) else max(minSidePadding, w * 0.06f)
 
@@ -215,25 +335,21 @@ class BoopClockView @JvmOverloads constructor(
         val dotSize = max(6f * density, rawDot)
         val dotRadius = dotSize / 2f
         val gap = max(2f, dotSize * 0.22f)
-        val colonGap = max(6f * density, dotSize * 0.95f)
         val digitGap = max(8f * density, dotSize * 1.05f)
 
         val digitWidth = 5 * dotSize + 4 * gap
         val digitHeight = 7 * dotSize + 6 * gap
 
-        // Optical column bounds for each digit to ensure perfectly symmetric colon spacing
+        // Optical column bounds
         val d1LeftCol = getLeftmostCol(d1)
         val d2RightCol = getRightmostCol(d2)
         val d3LeftCol = getLeftmostCol(d3)
         val d4RightCol = getRightmostCol(d4)
 
-        // Raw layout coordinates
         val rawX1 = 0f
         val rawX2 = rawX1 + digitWidth + digitGap
         val d2RightDotX = rawX2 + d2RightCol * (dotSize + gap) + dotRadius
 
-        // Visual distance from d2 dot to colon center, and from colon center to d3 dot
-        // This guarantees the spacing on both sides of the colon is EQUAL AT ALL TIMES.
         val colonSpacing = max(10f * density, dotSize * 1.55f)
 
         val colonCenterX = d2RightDotX + colonSpacing
@@ -244,7 +360,6 @@ class BoopClockView @JvmOverloads constructor(
         val d1LeftDotX = rawX1 + d1LeftCol * (dotSize + gap) + dotRadius
         val d4RightDotX = rawX4 + d4RightCol * (dotSize + gap) + dotRadius
 
-        // Center the full visual clock horizontally
         val totalVisualWidth = d4RightDotX - d1LeftDotX
         val visualStartX = (w - totalVisualWidth) / 2f
         val shiftX = visualStartX - d1LeftDotX
@@ -255,10 +370,9 @@ class BoopClockView @JvmOverloads constructor(
         val x3 = rawX3 + shiftX
         val x4 = rawX4 + shiftX
 
-        // Center digits vertically in available area below header
         val startY = headerTotalHeight + (h - headerTotalHeight - digitHeight) / 2f
 
-        // ── Header (Date, Battery, AM/PM) ───────────────────────
+        // Top Header
         val days = arrayOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
         val months = arrayOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
         val dayStr = days[cal.get(Calendar.DAY_OF_WEEK) - 1]
@@ -286,33 +400,23 @@ class BoopClockView @JvmOverloads constructor(
             canvas.drawText(battStr, leftCurX, headerY, metaPaint)
         }
 
-        // Right Header: AM/PM aligns with the rightmost visible dot
         if (period != null) {
             val periodWidth = periodPaint.measureText(period)
             val periodX = (visualStartX + totalVisualWidth + dotRadius) - periodWidth
             canvas.drawText(period, periodX, headerY, periodPaint)
         }
 
-        // ── Main Digits ─────────────────────────────────────────
-        // Hour Digit 1
+        // Main Digits
         drawDigit(canvas, d1, x1, startY, dotSize, gap)
-
-        // Hour Digit 2
         drawDigit(canvas, d2, x2, startY, dotSize, gap)
 
-        // 2-Dot Colon (Optical center guaranteed equal spacing to left and right digits)
         val colonDot1CenterY = startY + (2 * (dotSize + gap)) + dotRadius
         val colonDot2CenterY = startY + (4 * (dotSize + gap)) + dotRadius
         canvas.drawCircle(finalColonCenterX, colonDot1CenterY, dotRadius, colonPaint)
         canvas.drawCircle(finalColonCenterX, colonDot2CenterY, dotRadius, colonPaint)
 
-        // Minute Digit 1
         drawDigit(canvas, d3, x3, startY, dotSize, gap)
-
-        // Minute Digit 2
         drawDigit(canvas, d4, x4, startY, dotSize, gap)
-
-        canvas.restore()
     }
 
     private fun getLeftmostCol(digit: Int): Int {
