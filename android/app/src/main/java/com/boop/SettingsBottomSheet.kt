@@ -12,23 +12,14 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.HorizontalScrollView
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.Switch
-import android.widget.TextView
+import android.widget.*
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 
 class SettingsBottomSheet : BottomSheetDialogFragment() {
 
     var onSettingsChanged: (() -> Unit)? = null
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         val ctx = requireContext()
         val nothingFont = Typeface.createFromAsset(ctx.assets, "fonts/NothingFont5x7.ttf")
 
@@ -43,197 +34,122 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         }
         root.addView(content)
 
-        // ── Title ──────────────────────────────────────────────
-        val titleView = TextView(ctx).apply {
+        // Title
+        content.addView(TextView(ctx).apply {
             text = "BOOP SETTINGS"
             typeface = nothingFont
             textSize = 22f
             setTextColor(Color.parseColor("#FCFAFE"))
-            setPadding(0, 0, 0, 32)
-        }
-        content.addView(titleView)
+            setPadding(0, 0, 0, 24)
+        })
 
-        // ── Themes Section ─────────────────────────────────────
-        val themeHeader = TextView(ctx).apply {
+        // Themes
+        content.addView(TextView(ctx).apply {
             text = "THEMES"
             typeface = nothingFont
             textSize = 14f
             setTextColor(Color.parseColor("#8A8D8C"))
-            setPadding(0, 8, 0, 16)
-        }
-        content.addView(themeHeader)
-
-        val themeScroll = HorizontalScrollView(ctx).apply {
-            isHorizontalScrollBarEnabled = false
-            setPadding(0, 0, 0, 32)
-        }
-        val themeRow = LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
-        themeScroll.addView(themeRow)
+            setPadding(0, 0, 0, 12)
+        })
 
         val currentThemeId = BoopPreferences.getTheme(ctx)
-
+        val themeRow = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
         for (t in ColorTheme.ALL) {
             val isSelected = t.id == currentThemeId
-            val themeBtn = TextView(ctx).apply {
+            themeRow.addView(TextView(ctx).apply {
                 text = t.name
                 textSize = 13f
-                setPadding(28, 18, 28, 18)
-                val bg = GradientDrawable().apply {
+                setPadding(28, 16, 28, 16)
+                background = GradientDrawable().apply {
                     cornerRadius = 24f
-                    if (isSelected) {
-                        setColor(Color.parseColor("#D71921"))
-                        setStroke(2, Color.WHITE)
-                    } else {
-                        setColor(Color.parseColor("#1E2221"))
-                        setStroke(1, Color.parseColor("#333333"))
-                    }
+                    setColor(if (isSelected) Color.parseColor("#D71921") else Color.parseColor("#1E2221"))
+                    if (isSelected) setStroke(2, Color.WHITE) else setStroke(1, Color.parseColor("#333333"))
                 }
-                background = bg
                 setTextColor(if (isSelected) Color.WHITE else Color.parseColor("#FCFAFE"))
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { setMargins(0, 0, 16, 0) }
-
+                layoutParams = LinearLayout.LayoutParams(-2, -2).apply { setMargins(0, 0, 16, 0) }
                 setOnClickListener {
                     BoopPreferences.setTheme(ctx, t.id)
                     onSettingsChanged?.invoke()
                     dismiss()
                 }
-            }
-            themeRow.addView(themeBtn)
+            })
         }
-        content.addView(themeScroll)
+        content.addView(HorizontalScrollView(ctx).apply {
+            isHorizontalScrollBarEnabled = false
+            setPadding(0, 0, 0, 24)
+            addView(themeRow)
+        })
 
-        // ── Divider ────────────────────────────────────────────
-        fun addDivider() {
-            val div = View(ctx).apply {
-                setBackgroundColor(Color.parseColor("#222625"))
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, 2
-                ).apply { setMargins(0, 16, 0, 16) }
-            }
-            content.addView(div)
-        }
+        fun divider() = content.addView(View(ctx).apply {
+            setBackgroundColor(Color.parseColor("#222625"))
+            layoutParams = LinearLayout.LayoutParams(-1, 2).apply { setMargins(0, 12, 0, 12) }
+        })
 
-        // ── Switch Row Helper ──────────────────────────────────
-        fun addSwitchRow(title: String, subtitle: String, isChecked: Boolean, onToggle: (Boolean) -> Unit) {
+        fun switchRow(title: String, subtitle: String, isChecked: Boolean, onToggle: (Boolean) -> Unit) {
             val row = LinearLayout(ctx).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, 16, 0, 16)
+                setPadding(0, 12, 0, 12)
             }
             val textLayout = LinearLayout(ctx).apply {
                 orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                layoutParams = LinearLayout.LayoutParams(0, -2, 1f)
+                addView(TextView(ctx).apply { text = title; textSize = 16f; setTextColor(Color.parseColor("#FCFAFE")) })
+                addView(TextView(ctx).apply { text = subtitle; textSize = 12f; setTextColor(Color.parseColor("#8A8D8C")); setPadding(0, 4, 0, 0) })
             }
-            val titleLabel = TextView(ctx).apply {
-                text = title
-                textSize = 16f
-                setTextColor(Color.parseColor("#FCFAFE"))
-            }
-            val subLabel = TextView(ctx).apply {
-                text = subtitle
-                textSize = 12f
-                setTextColor(Color.parseColor("#8A8D8C"))
-                setPadding(0, 4, 0, 0)
-            }
-            textLayout.addView(titleLabel)
-            textLayout.addView(subLabel)
-
-            val toggle = Switch(ctx).apply {
-                this.isChecked = isChecked
-                setOnCheckedChangeListener { _, checked ->
-                    onToggle(checked)
-                    onSettingsChanged?.invoke()
-                }
-            }
-
             row.addView(textLayout)
-            row.addView(toggle)
+            row.addView(Switch(ctx).apply {
+                this.isChecked = isChecked
+                setOnCheckedChangeListener { _, c -> onToggle(c); onSettingsChanged?.invoke() }
+            })
             content.addView(row)
         }
 
-        addDivider()
+        divider()
+        switchRow("24-Hour Clock", "Display 24-hour time or 12-hour with AM/PM", BoopPreferences.is24Hour(ctx)) {
+            BoopPreferences.set24Hour(ctx, it)
+        }
 
-        // 24-Hour Format
-        addSwitchRow(
-            "24-Hour Clock",
-            "Display 24-hour time or 12-hour with AM/PM",
-            BoopPreferences.is24Hour(ctx)
-        ) { BoopPreferences.set24Hour(ctx, it) }
-
-        addDivider()
-
-        // ── Native Screen Saver (Option A: 100% Native StandBy) ──
-        val screenSaverBtn = Button(ctx).apply {
+        divider()
+        // Screen Saver Button
+        content.addView(Button(ctx).apply {
             text = "★ Configure Screen Saver (Auto-Start on Charge)"
             setTextColor(Color.parseColor("#FCFAFE"))
-            val btnBg = GradientDrawable().apply {
+            background = GradientDrawable().apply {
                 setColor(Color.parseColor("#1E2221"))
                 cornerRadius = 18f
                 setStroke(2, Color.parseColor("#D71921"))
             }
-            background = btnBg
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { setMargins(0, 16, 0, 12) }
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { setMargins(0, 8, 0, 8) }
             setOnClickListener {
-                try {
-                    startActivity(Intent(Settings.ACTION_DREAM_SETTINGS))
-                } catch (e: Exception) {
-                    try {
-                        startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS))
-                    } catch (_: Exception) {}
-                }
+                try { startActivity(Intent(Settings.ACTION_DREAM_SETTINGS)) }
+                catch (_: Exception) { startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS)) }
             }
-        }
-        content.addView(screenSaverBtn)
-
-        val screenSaverNote = TextView(ctx).apply {
-            text = "Tap above → select 'Boop StandBy Clock' → set 'When to start: While charging'.\nActivates natively when idle on charger without extra permissions or battery drain."
+        })
+        content.addView(TextView(ctx).apply {
+            text = "Select 'Boop StandBy Clock' → 'When to start: While charging' for native dock mode."
             textSize = 12f
             setTextColor(Color.parseColor("#8A8D8C"))
-            setPadding(0, 0, 0, 16)
-        }
-        content.addView(screenSaverNote)
+            setPadding(0, 0, 0, 12)
+        })
 
-        addDivider()
-
-        // Do Not Disturb
+        divider()
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val hasDnd = nm.isNotificationPolicyAccessGranted
-        addSwitchRow(
-            "Do Not Disturb",
-            if (hasDnd) "Silence notifications while Boop is active" else "Requires permission to silence notifications (tap to grant)",
-            BoopPreferences.isDndEnabled(ctx)
-        ) {
-            if (!hasDnd && it) {
-                startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
-            }
+        switchRow("Do Not Disturb", if (hasDnd) "Silence notifications while active" else "Requires permission to silence (tap to grant)", BoopPreferences.isDndEnabled(ctx)) {
+            if (!hasDnd && it) startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
             BoopPreferences.setDndEnabled(ctx, it)
         }
 
-        addDivider()
+        divider()
+        switchRow("OLED Burn-in Protection", "Shifts pixels subtly every 60s to protect AMOLED", BoopPreferences.isBurnInProtection(ctx)) {
+            BoopPreferences.setBurnInProtection(ctx, it)
+        }
 
-        // Burn-in Protection
-        addSwitchRow(
-            "OLED Burn-in Protection",
-            "Shifts pixels subtly every 60 seconds to protect AMOLED screens",
-            BoopPreferences.isBurnInProtection(ctx)
-        ) { BoopPreferences.setBurnInProtection(ctx, it) }
-
-        addDivider()
-
-        // Low Power Mode
-        addSwitchRow(
-            "Low Power Mode",
-            "Dims display to minimal brightness and reduces refresh rate",
-            BoopPreferences.isLowPower(ctx)
-        ) { BoopPreferences.setLowPower(ctx, it) }
+        divider()
+        switchRow("Low Power Mode", "Dims display brightness and reduces tick frequency", BoopPreferences.isLowPower(ctx)) {
+            BoopPreferences.setLowPower(ctx, it)
+        }
 
         return root
     }

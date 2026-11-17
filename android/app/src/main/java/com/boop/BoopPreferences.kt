@@ -11,7 +11,6 @@ object BoopPreferences {
     private const val KEY_DND_ENABLED = "dnd_enabled"
     private const val KEY_BURN_IN_PROTECTION = "burn_in_protection"
     private const val KEY_LOW_POWER = "low_power"
-    private const val KEY_AUTO_LAUNCH = "auto_launch"
 
     private fun prefs(ctx: Context): SharedPreferences =
         ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -30,7 +29,4 @@ object BoopPreferences {
 
     fun isLowPower(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_LOW_POWER, false)
     fun setLowPower(ctx: Context, v: Boolean) = prefs(ctx).edit().putBoolean(KEY_LOW_POWER, v).apply()
-
-    fun isAutoLaunch(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_AUTO_LAUNCH, true)
-    fun setAutoLaunch(ctx: Context, v: Boolean) = prefs(ctx).edit().putBoolean(KEY_AUTO_LAUNCH, v).apply()
 }
