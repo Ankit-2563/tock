@@ -189,23 +189,34 @@ class BoopClockView @JvmOverloads constructor(
         val d3 = minute / 10
         val d4 = minute % 10
 
-        // ── Layout calculations matching DotClock.tsx ───────────
-        val headerHeight = if (isLandscape) 56f else 70f
-        val horizontalPadding = if (isLandscape) 40f else 20f
-        val verticalPadding = if (isLandscape) 30f else 50f
+        // ── Layout calculations with generous side padding (at least 64px/dp) ──
+        val density = resources.displayMetrics.density
+        val minSidePadding = max(64f, 64f * density)
+        val sidePadding = if (isLandscape) max(minSidePadding, w * 0.085f) else max(minSidePadding, w * 0.06f)
 
-        val availableW = w - horizontalPadding
-        val availableH = h - headerHeight - verticalPadding
+        val headerTopPadding = if (isLandscape) max(24f, 24f * density) else max(48f, 48f * density)
+        val metaFontSize = max(14f * density, min(w, h) * 0.045f)
+        val periodFontSize = max(16f * density, min(w, h) * 0.05f)
+
+        metaPaint.textSize = metaFontSize
+        periodPaint.textSize = periodFontSize
+
+        val headerY = headerTopPadding + metaFontSize
+        val headerTotalHeight = headerY + 16f * density
+        val bottomMargin = 20f * density
+
+        val availableW = w - (sidePadding * 2f)
+        val availableH = h - headerTotalHeight - bottomMargin
 
         val byWidth = availableW / 28.5f
         val byHeight = availableH / 8.5f
         val rawDot = if (isLandscape) min(byWidth, byHeight) else min(availableW / 28.5f, availableH / 12f)
 
-        val dotSize = max(8f, rawDot)
+        val dotSize = max(6f * density, rawDot)
         val dotRadius = dotSize / 2f
         val gap = max(2f, dotSize * 0.22f)
-        val colonGap = max(6f, dotSize * 0.95f)
-        val digitGap = max(8f, dotSize * 1.05f)
+        val colonGap = max(6f * density, dotSize * 0.95f)
+        val digitGap = max(8f * density, dotSize * 1.05f)
 
         val digitWidth = 5 * dotSize + 4 * gap
         val digitHeight = 7 * dotSize + 6 * gap
@@ -216,20 +227,10 @@ class BoopClockView @JvmOverloads constructor(
         val startX = (w - totalWidth) / 2f
 
         // Center digits vertically in available area below header
-        val startY = headerHeight + (h - headerHeight - digitHeight) / 2f
+        val startY = headerTotalHeight + (h - headerTotalHeight - digitHeight) / 2f
 
         // ── Header (Date, Battery, AM/PM) ───────────────────────
-        val metaFontSize = max(16f, dotSize * 0.74f)
-        val periodFontSize = max(18f, dotSize * 0.78f)
-
-        metaPaint.textSize = metaFontSize
-        periodPaint.textSize = periodFontSize
-
-        val headerPaddingTop = if (isLandscape) 28f else 56f
-        val headerPaddingH = if (isLandscape) 44f else 24f
-        val headerY = headerPaddingTop + metaFontSize
-
-        // Left Header: Date
+        // Left Header aligns directly with the first digit (at least 64px from edge)
         val days = arrayOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
         val months = arrayOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
         val dayStr = days[cal.get(Calendar.DAY_OF_WEEK) - 1]
@@ -237,7 +238,7 @@ class BoopClockView @JvmOverloads constructor(
         val dateNum = cal.get(Calendar.DAY_OF_MONTH)
         val dateStr = "$dayStr $monthStr $dateNum"
 
-        var leftCurX = headerPaddingH
+        var leftCurX = startX
         canvas.drawText(dateStr, leftCurX, headerY, metaPaint)
         leftCurX += metaPaint.measureText(dateStr)
 
@@ -257,10 +258,10 @@ class BoopClockView @JvmOverloads constructor(
             canvas.drawText(battStr, leftCurX, headerY, metaPaint)
         }
 
-        // Right Header: AM/PM in NothingFont5x7
+        // Right Header: AM/PM aligns with the rightmost edge of the last digit
         if (period != null) {
             val periodWidth = periodPaint.measureText(period)
-            val periodX = w - headerPaddingH - periodWidth
+            val periodX = startX + totalWidth - periodWidth
             canvas.drawText(period, periodX, headerY, periodPaint)
         }
 
