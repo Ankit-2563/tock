@@ -1,10 +1,7 @@
 package com.tock
 
 import android.animation.ValueAnimator
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -19,7 +16,6 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import java.util.Calendar
 
 class MainActivity : AppCompatActivity() {
 
@@ -34,20 +30,6 @@ class MainActivity : AppCompatActivity() {
 
     private val cardViews = mutableListOf<ThemePreviewCard>()
     private val easeInOut = AccelerateDecelerateInterpolator()
-
-    private val timeTickReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == Intent.ACTION_TIME_TICK) {
-                val cal = Calendar.getInstance()
-                val minute = cal.get(Calendar.MINUTE)
-                if (minute == 0) {
-                    TockAudioPlayer.playHourChime(context)
-                } else {
-                    TockAudioPlayer.playMinuteTick(context)
-                }
-            }
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -107,17 +89,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        try {
-            registerReceiver(timeTickReceiver, IntentFilter(Intent.ACTION_TIME_TICK))
-        } catch (_: Exception) {}
         renderThemeCards()
-    }
-
-    override fun onPause() {
-        super.onPause()
-        try {
-            unregisterReceiver(timeTickReceiver)
-        } catch (_: Exception) {}
     }
 
     private fun renderThemeCards() {
