@@ -38,6 +38,10 @@ class TockClockView @JvmOverloads constructor(
     private val poppinsPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val poppinsAmPmPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
+    private val bloomDigitPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bloomMetaPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bloomColonPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
     // ── State ───────────────────────────────────────────────────
     private var theme: ColorTheme = ColorTheme.CLASSIC
     private var use24Hour = true
@@ -57,6 +61,11 @@ class TockClockView @JvmOverloads constructor(
     // Fonts
     private val nothingFont: Typeface = Typeface.createFromAsset(context.assets, "fonts/NothingFont5x7.ttf")
     private val poppinsFont: Typeface = Typeface.createFromAsset(context.assets, "fonts/Poppins-Regular.ttf")
+    private val chairdrobeFont: Typeface = try {
+        Typeface.createFromAsset(context.assets, "fonts/Chairdrobe Rounded Bold.otf")
+    } catch (_: Exception) {
+        Typeface.create("sans-serif-condensed", Typeface.BOLD)
+    }
 
     // Gesture detector for opening settings (tap or long press)
     var onOpenSettingsListener: (() -> Unit)? = null
@@ -138,6 +147,7 @@ class TockClockView @JvmOverloads constructor(
 
         val activeFont = when (theme.style) {
             ThemeStyle.POPPINS -> poppinsFont
+            ThemeStyle.TOCK_BLOOM -> chairdrobeFont
             else -> nothingFont
         }
         metaPaint.typeface = activeFont
@@ -147,6 +157,13 @@ class TockClockView @JvmOverloads constructor(
         poppinsPaint.color = theme.digitColor
         poppinsAmPmPaint.typeface = poppinsFont
         poppinsAmPmPaint.color = theme.periodColor
+
+        bloomDigitPaint.typeface = chairdrobeFont
+        bloomDigitPaint.color = theme.digitColor
+        bloomMetaPaint.typeface = chairdrobeFont
+        bloomMetaPaint.color = theme.metaColor
+        bloomColonPaint.color = theme.colonColor
+        bloomColonPaint.style = Paint.Style.FILL
     }
 
     override fun onAttachedToWindow() {
@@ -224,10 +241,100 @@ class TockClockView @JvmOverloads constructor(
 
         when (theme.style) {
             ThemeStyle.POPPINS -> drawPoppinsClock(canvas, w, h, hour, minute, period)
+            ThemeStyle.TOCK_BLOOM -> drawBloomClock(canvas, w, h, hour, minute, period, cal)
             else -> drawDotMatrixClock(canvas, w, h, hour, minute, period, cal)
         }
 
         canvas.restore()
+    }
+
+    // ── Theme 3: Tock Bloom Clock ────────────────────────────────
+    private fun drawBloomClock(
+        canvas: Canvas,
+        w: Float,
+        h: Float,
+        hour: Int,
+        minute: Int,
+        period: String?,
+        cal: Calendar
+    ) {
+        val density = resources.displayMetrics.density
+
+        // 1. Top Date Header (e.g. "WED NOV 18")
+        val headerText = if (isPreview) {
+            "WED NOV 18"
+        } else {
+            val days = arrayOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
+            val months = arrayOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+            val dayStr = days[cal.get(Calendar.DAY_OF_WEEK) - 1]
+            val monthStr = months[cal.get(Calendar.MONTH)]
+            val dayNum = cal.get(Calendar.DAY_OF_MONTH)
+            "$dayStr $monthStr $dayNum"
+        }
+
+        val headerSize = max(11f * density, min(w, h) * 0.095f)
+        bloomMetaPaint.textSize = headerSize
+        bloomMetaPaint.textAlign = Paint.Align.CENTER
+
+        val hFm = bloomMetaPaint.fontMetrics
+        val headerY = (h * 0.075f) - hFm.ascent
+        canvas.drawText(headerText, w / 2f, headerY, bloomMetaPaint)
+
+        // 2. Main Time ("20:02")
+        val hStr = String.format("%02d", hour)
+        val mStr = String.format("%02d", minute)
+
+        val availableW = w * 0.82f
+        val availableH = h * 0.54f
+
+        val testSize = 200f * density
+        bloomDigitPaint.textSize = testSize
+        val rawHw = bloomDigitPaint.measureText(hStr)
+        val rawMw = bloomDigitPaint.measureText(mStr)
+        val rawFm = bloomDigitPaint.fontMetrics
+        val rawDigitH = rawFm.descent - rawFm.ascent
+
+        val rawColonDotR = rawDigitH * 0.084f
+        val rawColonGap = rawDigitH * 0.22f
+        val rawColonTotalW = (rawColonGap * 2f) + (rawColonDotR * 2f)
+        val rawTotalW = rawHw + rawColonTotalW + rawMw
+
+        val scale = min(availableW / rawTotalW, availableH / rawDigitH)
+        val finalFontSize = testSize * scale
+        bloomDigitPaint.textSize = finalFontSize
+
+        val finalFm = bloomDigitPaint.fontMetrics
+        val finalDigitH = finalFm.descent - finalFm.ascent
+        val baselineY = (h / 2f) - (finalFm.ascent + finalFm.descent) / 2f
+
+        val finalHw = bloomDigitPaint.measureText(hStr)
+        val finalMw = bloomDigitPaint.measureText(mStr)
+        val colonDotR = finalDigitH * 0.084f
+        val colonGap = finalDigitH * 0.22f
+        val colonTotalW = (colonGap * 2f) + (colonDotR * 2f)
+        val totalW = finalHw + colonTotalW + finalMw
+        val startX = (w - totalW) / 2f
+
+        // Draw Hour Digits
+        canvas.drawText(hStr, startX, baselineY, bloomDigitPaint)
+
+        // Draw Two Colon Dots (centered vertically with digits)
+        val colonCenterX = startX + finalHw + colonGap + colonDotR
+        val dotOffset = finalDigitH * 0.205f
+        canvas.drawCircle(colonCenterX, (h / 2f) - dotOffset, colonDotR, bloomColonPaint)
+        canvas.drawCircle(colonCenterX, (h / 2f) + dotOffset, colonDotR, bloomColonPaint)
+
+        // Draw Minute Digits
+        val minuteStartX = startX + finalHw + colonTotalW
+        canvas.drawText(mStr, minuteStartX, baselineY, bloomDigitPaint)
+
+        // 3. Bottom Period ("AM" / "PM")
+        if (isPreview || period != null) {
+            val amText = if (isPreview) "AM" else period ?: "AM"
+            bloomMetaPaint.textSize = headerSize
+            val amY = h - (h * 0.07f)
+            canvas.drawText(amText, w / 2f, amY, bloomMetaPaint)
+        }
     }
 
     // ── Theme 2: Poppins Clean Typography Clock ──────────────────
