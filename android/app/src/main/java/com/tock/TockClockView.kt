@@ -474,8 +474,8 @@ class TockClockView @JvmOverloads constructor(
         val d2Str = d2.toString()
         val d3Str = d3.toString()
 
-        val availableW = w * (if (isLandscape) 0.88f else 0.86f)
-        val availableH = h * (if (isLandscape) 0.72f else 0.62f)
+        val availableW = w * (if (isLandscape) 0.92f else 0.88f)
+        val availableH = h * (if (isLandscape) 0.76f else 0.58f)
 
         val testSize = 250f * density
         bigTymPaint1.textSize = testSize
@@ -489,11 +489,13 @@ class TockClockView @JvmOverloads constructor(
         val rawW2 = bigTymPaint1.measureText(d2Str)
         val rawW3 = bigTymPaint2.measureText(d3Str)
 
-        val overlapDigits = digitH * 0.10f
+        val overlapDigits = min(rawW0, rawW1) * 0.12f
         val colonR = digitH * 0.115f
-        val colonOverlap = colonR * 0.50f
+        val colonOverlap = colonR * 0.35f
 
-        val rawTotalW = rawW0 + (rawW1 - overlapDigits) + (rawW2 - colonOverlap) + (rawW3 - overlapDigits)
+        val hoursW = rawW0 + rawW1 - overlapDigits
+        val minsW = rawW2 + rawW3 - (min(rawW2, rawW3) * 0.12f)
+        val rawTotalW = hoursW + minsW - colonOverlap
 
         val scale = min(availableW / rawTotalW, availableH / digitH)
         val finalFontSize = testSize * scale
@@ -509,21 +511,24 @@ class TockClockView @JvmOverloads constructor(
         val fw2 = bigTymPaint1.measureText(d2Str)
         val fw3 = bigTymPaint2.measureText(d3Str)
 
-        val fOverlapDigits = finalDigitH * 0.10f
+        val fOverlap01 = min(fw0, fw1) * 0.12f
+        val fOverlap23 = min(fw2, fw3) * 0.12f
         val fColonR = finalDigitH * 0.115f
-        val fColonOverlap = fColonR * 0.50f
+        val fColonOverlap = fColonR * 0.35f
 
-        // Position colon exactly in the horizontal center
-        val colonCenterX = w / 2f
+        val fHoursW = fw0 + fw1 - fOverlap01
+        val fMinsW = fw2 + fw3 - fOverlap23
+        val totalW = fHoursW + fMinsW - fColonOverlap
+        val startX = (w - totalW) / 2f
 
-        // d1 (2nd digit of hours) overlaps colon: its right edge is at colonCenterX + fColonOverlap
-        val d1Right = colonCenterX + fColonOverlap
-        val d1X = d1Right - fw1
-        val d0X = d1X - fw0 + fOverlapDigits
+        val d0X = startX
+        val d1X = d0X + fw0 - fOverlap01
+        val d1Right = d1X + fw1
 
-        // d2 (1st digit of minutes) overlaps colon: its left edge is at colonCenterX - fColonOverlap
-        val d2X = colonCenterX - fColonOverlap
-        val d3X = d2X + fw2 - fOverlapDigits
+        val d2X = d1Right - fColonOverlap
+        val d3X = d2X + fw2 - fOverlap23
+
+        val colonCenterX = (d1Right + d2X) / 2f
 
         // 1. Draw d0 (100% opacity #0083EA)
         drawAnimatedTextDigit(canvas, 0, d0, d0X, baselineY, bigTymPaint1, fw0, finalDigitH)
@@ -537,7 +542,7 @@ class TockClockView @JvmOverloads constructor(
         // 4. Draw d3 (80% opacity #4CB0FD, overlaps d2)
         drawAnimatedTextDigit(canvas, 3, d3, d3X, baselineY, bigTymPaint2, fw3, finalDigitH)
 
-        // 5. Draw Colon (Two #E6E6E6 dots on top of digits)
+        // 5. Draw Colon (Two #E6E6E6 dots overlapping d1 and d2 seam)
         val dotOffset = finalDigitH * 0.18f
         canvas.drawCircle(colonCenterX, (h / 2f) - dotOffset, fColonR, bigTymColonPaint)
         canvas.drawCircle(colonCenterX, (h / 2f) + dotOffset, fColonR, bigTymColonPaint)
@@ -547,7 +552,7 @@ class TockClockView @JvmOverloads constructor(
             val amText = if (isPreview) "AM" else period ?: "AM"
             bigTymAmPaint.textSize = finalFontSize * 0.13f
             val amW = bigTymAmPaint.measureText(amText)
-            val amX = d3X + fw3 - amW
+            val amX = d3X + fw3 - (amW * 0.6f)
             val amY = baselineY + finalFm.ascent - (2f * density)
             canvas.drawText(amText, min(amX, w - (12f * density) - amW), max(amY, 22f * density), bigTymAmPaint)
         }
