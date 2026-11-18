@@ -1,5 +1,6 @@
 package com.tock
 
+import android.animation.ValueAnimator
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -15,6 +16,7 @@ import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
+import android.view.animation.PathInterpolator
 import java.util.Calendar
 import kotlin.math.PI
 import kotlin.math.cos
@@ -27,6 +29,17 @@ class TockClockView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
+
+    // ── Digit Transition State ──────────────────────────────────
+    private class DigitTransition {
+        var prevDigit: Int = -1
+        var currentDigit: Int = -1
+        var targetDigit: Int = -1
+        var progress: Float = 1f
+    }
+
+    private val digitTransitions = Array(4) { DigitTransition() }
+    private var digitAnimator: ValueAnimator? = null
 
     // ── Paints ──────────────────────────────────────────────────
     private val digitPaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -202,10 +215,147 @@ class TockClockView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        digitAnimator?.cancel()
         if (!isPreview) {
             handler.removeCallbacks(tickRunnable)
             try { context.unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
         }
+    }
+
+    private fun updateDigits(d0: Int, d1: Int, d2: Int, d3: Int) {
+        val newDigits = intArrayOf(d0, d1, d2, d3)
+        if (digitTransitions[0].currentDigit == -1 || isPreview) {
+            for (i in 0 until 4) {
+                digitTransitions[i].prevDigit = newDigits[i]
+                digitTransitions[i].currentDigit = newDigits[i]
+                digitTransitions[i].targetDigit = newDigits[i]
+                digitTransitions[i].progress = 1f
+            }
+            return
+        }
+
+        var anyChanged = false
+        for (i in 0 until 4) {
+            if (digitTransitions[i].targetDigit != newDigits[i]) {
+                digitTransitions[i].prevDigit = digitTransitions[i].targetDigit
+                digitTransitions[i].targetDigit = newDigits[i]
+                digitTransitions[i].progress = 0f
+                anyChanged = true
+            }
+        }
+
+        if (anyChanged) {
+            digitAnimator?.cancel()
+            digitAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 850L // slow, smooth, aesthetically pleasing
+                interpolator = PathInterpolator(0.25f, 0.1f, 0.25f, 1f) // silky deceleration curve
+                addUpdateListener { anim ->
+                    val p = anim.animatedValue as Float
+                    for (i in 0 until 4) {
+                        if (digitTransitions[i].progress < 1f) {
+                            digitTransitions[i].progress = p
+                            if (p >= 1f) {
+                                digitTransitions[i].currentDigit = digitTransitions[i].targetDigit
+                            }
+                        }
+                    }
+                    invalidate()
+                }
+                start()
+            }
+        }
+    }
+
+    private fun drawAnimatedDotDigit(
+        canvas: Canvas,
+        digitIndex: Int,
+        targetDigit: Int,
+        startX: Float,
+        startY: Float,
+        dotSize: Float,
+        gap: Float,
+        digitWidth: Float,
+        digitHeight: Float
+    ) {
+        val trans = digitTransitions[digitIndex]
+        if (trans.progress >= 1f || trans.prevDigit == targetDigit) {
+            drawDotDigit(canvas, targetDigit, startX, startY, dotSize, gap)
+            return
+        }
+
+        val p = trans.progress
+        val slideDist = digitHeight * 0.40f
+        val origAlpha = digitPaint.alpha
+
+        canvas.save()
+        val clipPad = dotSize * 0.5f
+        canvas.clipRect(
+            startX - clipPad,
+            startY - clipPad,
+            startX + digitWidth + clipPad,
+            startY + digitHeight + clipPad
+        )
+
+        // Old digit sliding up and fading out
+        val oldAlpha = (origAlpha * (1f - p)).toInt().coerceIn(0, 255)
+        if (oldAlpha > 0) {
+            digitPaint.alpha = oldAlpha
+            drawDotDigit(canvas, trans.prevDigit, startX, startY - (p * slideDist), dotSize, gap)
+        }
+
+        // New digit sliding in from below and fading in
+        val newAlpha = (origAlpha * p).toInt().coerceIn(0, 255)
+        if (newAlpha > 0) {
+            digitPaint.alpha = newAlpha
+            drawDotDigit(canvas, targetDigit, startX, startY + ((1f - p) * slideDist), dotSize, gap)
+        }
+
+        digitPaint.alpha = origAlpha
+        canvas.restore()
+    }
+
+    private fun drawAnimatedTextDigit(
+        canvas: Canvas,
+        digitIndex: Int,
+        targetDigit: Int,
+        x: Float,
+        baselineY: Float,
+        paint: Paint,
+        slotWidth: Float,
+        digitH: Float
+    ) {
+        val trans = digitTransitions[digitIndex]
+        if (trans.progress >= 1f || trans.prevDigit == targetDigit) {
+            canvas.drawText(targetDigit.toString(), x, baselineY, paint)
+            return
+        }
+
+        val p = trans.progress
+        val slideDist = digitH * 0.40f
+        val origAlpha = paint.alpha
+
+        canvas.save()
+        val clipTop = baselineY - digitH * 0.95f
+        val clipBottom = baselineY + digitH * 0.35f
+        val clipPad = slotWidth * 0.15f
+        canvas.clipRect(x - clipPad, clipTop, x + slotWidth + clipPad, clipBottom)
+
+        // 1. Old digit sliding up and fading out
+        val oldAlpha = (origAlpha * (1f - p)).toInt().coerceIn(0, 255)
+        if (oldAlpha > 0) {
+            paint.alpha = oldAlpha
+            canvas.drawText(trans.prevDigit.toString(), x, baselineY - (p * slideDist), paint)
+        }
+
+        // 2. New digit sliding in from below and fading in
+        val newAlpha = (origAlpha * p).toInt().coerceIn(0, 255)
+        if (newAlpha > 0) {
+            paint.alpha = newAlpha
+            canvas.drawText(targetDigit.toString(), x, baselineY + ((1f - p) * slideDist), paint)
+        }
+
+        paint.alpha = origAlpha
+        canvas.restore()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -263,11 +413,18 @@ class TockClockView @JvmOverloads constructor(
             period = if (rawHour >= 12) "PM" else "AM"
         }
 
+        val d0 = hour / 10
+        val d1 = hour % 10
+        val d2 = minute / 10
+        val d3 = minute % 10
+
+        updateDigits(d0, d1, d2, d3)
+
         when (theme.style) {
-            ThemeStyle.POPPINS -> drawPoppinsClock(canvas, w, h, hour, minute, period)
-            ThemeStyle.TOCK_BLOOM -> drawBloomClock(canvas, w, h, hour, minute, period, cal)
-            ThemeStyle.CANDY_CLOCK -> drawCandyClock(canvas, w, h, hour, minute, period)
-            else -> drawDotMatrixClock(canvas, w, h, hour, minute, period, cal)
+            ThemeStyle.POPPINS -> drawPoppinsClock(canvas, w, h, d0, d1, d2, d3, period)
+            ThemeStyle.TOCK_BLOOM -> drawBloomClock(canvas, w, h, d0, d1, d2, d3, period, cal)
+            ThemeStyle.CANDY_CLOCK -> drawCandyClock(canvas, w, h, d0, d1, d2, d3, period)
+            else -> drawDotMatrixClock(canvas, w, h, d0, d1, d2, d3, period, cal)
         }
 
         canvas.restore()
@@ -278,17 +435,19 @@ class TockClockView @JvmOverloads constructor(
         canvas: Canvas,
         w: Float,
         h: Float,
-        hour: Int,
-        minute: Int,
+        d0: Int,
+        d1: Int,
+        d2: Int,
+        d3: Int,
         period: String?
     ) {
         val density = resources.displayMetrics.density
         val isLandscape = w > h
 
-        val d1Str = String.format("%02d", hour).substring(0, 1)
-        val d2Str = String.format("%02d", hour).substring(1, 2)
-        val d3Str = String.format("%02d", minute).substring(0, 1)
-        val d4Str = String.format("%02d", minute).substring(1, 2)
+        val d0Str = d0.toString()
+        val d1Str = d1.toString()
+        val d2Str = d2.toString()
+        val d3Str = d3.toString()
 
         val digitColors = intArrayOf(
             Color.parseColor("#D170B3"),
@@ -304,10 +463,10 @@ class TockClockView @JvmOverloads constructor(
         candyPaint.textSize = testSize
         candyPaint.typeface = candyFont
 
-        val w1 = candyPaint.measureText(d1Str)
-        val w2 = candyPaint.measureText(d2Str)
-        val w3 = candyPaint.measureText(d3Str)
-        val w4 = candyPaint.measureText(d4Str)
+        val w1 = candyPaint.measureText(d0Str)
+        val w2 = candyPaint.measureText(d1Str)
+        val w3 = candyPaint.measureText(d2Str)
+        val w4 = candyPaint.measureText(d3Str)
 
         val fm = candyPaint.fontMetrics
         val digitH = fm.descent - fm.ascent
@@ -327,10 +486,10 @@ class TockClockView @JvmOverloads constructor(
         val finalDigitH = finalFm.descent - finalFm.ascent
         val baselineY = (h / 2f) - (finalFm.ascent + finalFm.descent) / 2f
 
-        val fw1 = candyPaint.measureText(d1Str)
-        val fw2 = candyPaint.measureText(d2Str)
-        val fw3 = candyPaint.measureText(d3Str)
-        val fw4 = candyPaint.measureText(d4Str)
+        val fw1 = candyPaint.measureText(d0Str)
+        val fw2 = candyPaint.measureText(d1Str)
+        val fw3 = candyPaint.measureText(d2Str)
+        val fw4 = candyPaint.measureText(d3Str)
 
         val fColonDotR = finalDigitH * 0.082f
         val fColonGap = finalDigitH * 0.17f
@@ -340,14 +499,14 @@ class TockClockView @JvmOverloads constructor(
         val finalTotalW = fw1 + fDigitGap + fw2 + fColonTotalW + fw3 + fDigitGap + fw4
         var curX = (w - finalTotalW) / 2f
 
-        // Draw d1
+        // Draw d0
         candyPaint.color = digitColors[0]
-        canvas.drawText(d1Str, curX, baselineY, candyPaint)
+        drawAnimatedTextDigit(canvas, 0, d0, curX, baselineY, candyPaint, fw1, finalDigitH)
         curX += fw1 + fDigitGap
 
-        // Draw d2
+        // Draw d1
         candyPaint.color = digitColors[1]
-        canvas.drawText(d2Str, curX, baselineY, candyPaint)
+        drawAnimatedTextDigit(canvas, 1, d1, curX, baselineY, candyPaint, fw2, finalDigitH)
         curX += fw2
 
         // Draw Colon (Two #E6E6E6 dots)
@@ -357,17 +516,17 @@ class TockClockView @JvmOverloads constructor(
         canvas.drawCircle(colonCenterX, (h / 2f) + dotOffset, fColonDotR, candyColonPaint)
         curX += fColonTotalW
 
-        // Draw d3
+        // Draw d2
         candyPaint.color = digitColors[2]
-        canvas.drawText(d3Str, curX, baselineY, candyPaint)
+        drawAnimatedTextDigit(canvas, 2, d2, curX, baselineY, candyPaint, fw3, finalDigitH)
         curX += fw3 + fDigitGap
 
-        // Draw d4
+        // Draw d3
         val d4StartX = curX
         candyPaint.color = digitColors[3]
-        canvas.drawText(d4Str, d4StartX, baselineY, candyPaint)
+        drawAnimatedTextDigit(canvas, 3, d3, d4StartX, baselineY, candyPaint, fw4, finalDigitH)
 
-        // AM at top right (above d4)
+        // AM at top right (above d3)
         if (isPreview || period != null) {
             val amText = if (isPreview) "AM" else period ?: "AM"
             candyAmPaint.textSize = finalFontSize * 0.17f
@@ -382,8 +541,10 @@ class TockClockView @JvmOverloads constructor(
         canvas: Canvas,
         w: Float,
         h: Float,
-        hour: Int,
-        minute: Int,
+        d0: Int,
+        d1: Int,
+        d2: Int,
+        d3: Int,
         period: String?,
         cal: Calendar
     ) {
@@ -410,23 +571,28 @@ class TockClockView @JvmOverloads constructor(
         canvas.drawText(headerText, w / 2f, headerY, bloomMetaPaint)
 
         // 2. Main Time ("20:02")
-        val hStr = String.format("%02d", hour)
-        val mStr = String.format("%02d", minute)
+        val d0Str = d0.toString()
+        val d1Str = d1.toString()
+        val d2Str = d2.toString()
+        val d3Str = d3.toString()
 
         val availableW = w * 0.82f
         val availableH = h * 0.54f
 
         val testSize = 200f * density
         bloomDigitPaint.textSize = testSize
-        val rawHw = bloomDigitPaint.measureText(hStr)
-        val rawMw = bloomDigitPaint.measureText(mStr)
+        val rawW0 = bloomDigitPaint.measureText(d0Str)
+        val rawW1 = bloomDigitPaint.measureText(d1Str)
+        val rawW2 = bloomDigitPaint.measureText(d2Str)
+        val rawW3 = bloomDigitPaint.measureText(d3Str)
         val rawFm = bloomDigitPaint.fontMetrics
         val rawDigitH = rawFm.descent - rawFm.ascent
 
         val rawColonDotR = rawDigitH * 0.084f
         val rawColonGap = rawDigitH * 0.22f
         val rawColonTotalW = (rawColonGap * 2f) + (rawColonDotR * 2f)
-        val rawTotalW = rawHw + rawColonTotalW + rawMw
+        val rawDigitGap = rawDigitH * 0.06f
+        val rawTotalW = rawW0 + rawDigitGap + rawW1 + rawColonTotalW + rawW2 + rawDigitGap + rawW3
 
         val scale = min(availableW / rawTotalW, availableH / rawDigitH)
         val finalFontSize = testSize * scale
@@ -436,26 +602,33 @@ class TockClockView @JvmOverloads constructor(
         val finalDigitH = finalFm.descent - finalFm.ascent
         val baselineY = (h / 2f) - (finalFm.ascent + finalFm.descent) / 2f
 
-        val finalHw = bloomDigitPaint.measureText(hStr)
-        val finalMw = bloomDigitPaint.measureText(mStr)
+        val fw0 = bloomDigitPaint.measureText(d0Str)
+        val fw1 = bloomDigitPaint.measureText(d1Str)
+        val fw2 = bloomDigitPaint.measureText(d2Str)
+        val fw3 = bloomDigitPaint.measureText(d3Str)
         val colonDotR = finalDigitH * 0.084f
         val colonGap = finalDigitH * 0.22f
         val colonTotalW = (colonGap * 2f) + (colonDotR * 2f)
-        val totalW = finalHw + colonTotalW + finalMw
+        val fDigitGap = finalDigitH * 0.06f
+        val totalW = fw0 + fDigitGap + fw1 + colonTotalW + fw2 + fDigitGap + fw3
         val startX = (w - totalW) / 2f
 
-        // Draw Hour Digits
-        canvas.drawText(hStr, startX, baselineY, bloomDigitPaint)
+        var curX = startX
+        drawAnimatedTextDigit(canvas, 0, d0, curX, baselineY, bloomDigitPaint, fw0, finalDigitH)
+        curX += fw0 + fDigitGap
+        drawAnimatedTextDigit(canvas, 1, d1, curX, baselineY, bloomDigitPaint, fw1, finalDigitH)
+        curX += fw1
 
         // Draw Two Colon Dots (centered vertically with digits)
-        val colonCenterX = startX + finalHw + colonGap + colonDotR
+        val colonCenterX = curX + colonGap + colonDotR
         val dotOffset = finalDigitH * 0.205f
         canvas.drawCircle(colonCenterX, (h / 2f) - dotOffset, colonDotR, bloomColonPaint)
         canvas.drawCircle(colonCenterX, (h / 2f) + dotOffset, colonDotR, bloomColonPaint)
+        curX += colonTotalW
 
-        // Draw Minute Digits
-        val minuteStartX = startX + finalHw + colonTotalW
-        canvas.drawText(mStr, minuteStartX, baselineY, bloomDigitPaint)
+        drawAnimatedTextDigit(canvas, 2, d2, curX, baselineY, bloomDigitPaint, fw2, finalDigitH)
+        curX += fw2 + fDigitGap
+        drawAnimatedTextDigit(canvas, 3, d3, curX, baselineY, bloomDigitPaint, fw3, finalDigitH)
 
         // 3. Bottom Period ("AM" / "PM")
         if (isPreview || period != null) {
@@ -471,14 +644,20 @@ class TockClockView @JvmOverloads constructor(
         canvas: Canvas,
         w: Float,
         h: Float,
-        hour: Int,
-        minute: Int,
+        d0: Int,
+        d1: Int,
+        d2: Int,
+        d3: Int,
         period: String?
     ) {
         val density = resources.displayMetrics.density
         val isLandscape = w > h
 
-        val timeStr = String.format("%02d:%02d", hour, minute)
+        val d0Str = d0.toString()
+        val d1Str = d1.toString()
+        val colonStr = ":"
+        val d2Str = d2.toString()
+        val d3Str = d3.toString()
 
         val sidePadding = if (isLandscape) max(28f * density, w * 0.06f) else max(16f * density, w * 0.04f)
         val availableW = w - sidePadding * 2f
@@ -488,7 +667,8 @@ class TockClockView @JvmOverloads constructor(
         poppinsPaint.textSize = testSize
         poppinsAmPmPaint.textSize = testSize * 0.29f
 
-        val rawTimeW = poppinsPaint.measureText(timeStr)
+        val testTimeStr = "$d0Str$d1Str:$d2Str$d3Str"
+        val rawTimeW = poppinsPaint.measureText(testTimeStr)
         val rawAmW = poppinsAmPmPaint.measureText(period ?: "AM") + 16f * density
         val rawTotalW = rawTimeW + rawAmW
 
@@ -501,20 +681,38 @@ class TockClockView @JvmOverloads constructor(
         poppinsPaint.textSize = mainFontSize
         poppinsAmPmPaint.textSize = amPmFontSize
 
-        val timeWidth = poppinsPaint.measureText(timeStr)
+        val fontMetrics = poppinsPaint.fontMetrics
+        val textHeight = fontMetrics.descent - fontMetrics.ascent
+        val baselineY = (h / 2f) + (textHeight / 2f) - fontMetrics.descent
+
+        val w0 = poppinsPaint.measureText(d0Str)
+        val w1 = poppinsPaint.measureText(d1Str)
+        val wColon = poppinsPaint.measureText(colonStr)
+        val w2 = poppinsPaint.measureText(d2Str)
+        val w3 = poppinsPaint.measureText(d3Str)
+
+        val digitGap = mainFontSize * 0.02f
+        val colonGap = mainFontSize * 0.03f
+        val timeWidth = w0 + digitGap + w1 + colonGap + wColon + colonGap + w2 + digitGap + w3
         val amPmGap = 16f * density * scale
         val amPmWidth = poppinsAmPmPaint.measureText(period ?: "AM")
         val totalBlockW = timeWidth + amPmGap + amPmWidth
 
         val startX = (w - totalBlockW) / 2f
 
-        val fontMetrics = poppinsPaint.fontMetrics
-        val textHeight = fontMetrics.descent - fontMetrics.ascent
-        val baselineY = (h / 2f) + (textHeight / 2f) - fontMetrics.descent
+        var curX = startX
+        drawAnimatedTextDigit(canvas, 0, d0, curX, baselineY, poppinsPaint, w0, textHeight)
+        curX += w0 + digitGap
+        drawAnimatedTextDigit(canvas, 1, d1, curX, baselineY, poppinsPaint, w1, textHeight)
+        curX += w1 + colonGap
+        canvas.drawText(colonStr, curX, baselineY, poppinsPaint)
+        curX += wColon + colonGap
+        drawAnimatedTextDigit(canvas, 2, d2, curX, baselineY, poppinsPaint, w2, textHeight)
+        curX += w2 + digitGap
+        drawAnimatedTextDigit(canvas, 3, d3, curX, baselineY, poppinsPaint, w3, textHeight)
+        curX += w3 + amPmGap
 
-        canvas.drawText(timeStr, startX, baselineY, poppinsPaint)
-        val amPmX = startX + timeWidth + amPmGap
-        canvas.drawText(period ?: "AM", amPmX, baselineY, poppinsAmPmPaint)
+        canvas.drawText(period ?: "AM", curX, baselineY, poppinsAmPmPaint)
     }
 
     // ── Theme 1: Nothing 5x7 Dot Matrix Clock ────────────────────
@@ -522,18 +720,15 @@ class TockClockView @JvmOverloads constructor(
         canvas: Canvas,
         w: Float,
         h: Float,
-        hour: Int,
-        minute: Int,
+        d1: Int,
+        d2: Int,
+        d3: Int,
+        d4: Int,
         period: String?,
         cal: Calendar
     ) {
         val isLandscape = w > h
         val density = resources.displayMetrics.density
-
-        val d1 = hour / 10
-        val d2 = hour % 10
-        val d3 = minute / 10
-        val d4 = minute % 10
 
         val minSidePadding = if (isPreview) 16f * density else max(64f, 64f * density)
         val sidePadding = if (isLandscape) max(minSidePadding, w * 0.085f) else max(minSidePadding, w * 0.06f)
@@ -635,8 +830,8 @@ class TockClockView @JvmOverloads constructor(
         canvas.drawText(periodText, periodX, headerY, periodPaint)
 
         // Draw Digits
-        drawDotDigit(canvas, d1, x1, startY, dotSize, gap)
-        drawDotDigit(canvas, d2, x2, startY, dotSize, gap)
+        drawAnimatedDotDigit(canvas, 0, d1, x1, startY, dotSize, gap, digitWidth, digitHeight)
+        drawAnimatedDotDigit(canvas, 1, d2, x2, startY, dotSize, gap, digitWidth, digitHeight)
 
         // Draw Colon
         val colonR = dotRadius
@@ -645,8 +840,8 @@ class TockClockView @JvmOverloads constructor(
         canvas.drawCircle(finalColonCenterX, dot1CenterY, colonR, colonPaint)
         canvas.drawCircle(finalColonCenterX, dot2CenterY, colonR, colonPaint)
 
-        drawDotDigit(canvas, d3, x3, startY, dotSize, gap)
-        drawDotDigit(canvas, d4, x4, startY, dotSize, gap)
+        drawAnimatedDotDigit(canvas, 2, d3, x3, startY, dotSize, gap, digitWidth, digitHeight)
+        drawAnimatedDotDigit(canvas, 3, d4, x4, startY, dotSize, gap, digitWidth, digitHeight)
     }
 
     private fun getLeftmostCol(digit: Int): Int {
