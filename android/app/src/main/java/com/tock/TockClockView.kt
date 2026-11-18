@@ -38,9 +38,6 @@ class TockClockView @JvmOverloads constructor(
     private val poppinsPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val poppinsAmPmPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    private val chunkyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val condensedPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-
     // ── State ───────────────────────────────────────────────────
     private var theme: ColorTheme = ColorTheme.CLASSIC
     private var use24Hour = true
@@ -60,8 +57,6 @@ class TockClockView @JvmOverloads constructor(
     // Fonts
     private val nothingFont: Typeface = Typeface.createFromAsset(context.assets, "fonts/NothingFont5x7.ttf")
     private val poppinsFont: Typeface = Typeface.createFromAsset(context.assets, "fonts/Poppins-Regular.ttf")
-    private val chunkyFont: Typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
-    private val condensedFont: Typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
 
     // Gesture detector for opening settings (tap or long press)
     var onOpenSettingsListener: (() -> Unit)? = null
@@ -143,8 +138,6 @@ class TockClockView @JvmOverloads constructor(
 
         val activeFont = when (theme.style) {
             ThemeStyle.POPPINS -> poppinsFont
-            ThemeStyle.CONDENSED_ORANGE -> condensedFont
-            ThemeStyle.CHUNKY_BLUE, ThemeStyle.BUBBLE_PURPLE -> chunkyFont
             else -> nothingFont
         }
         metaPaint.typeface = activeFont
@@ -154,9 +147,6 @@ class TockClockView @JvmOverloads constructor(
         poppinsPaint.color = theme.digitColor
         poppinsAmPmPaint.typeface = poppinsFont
         poppinsAmPmPaint.color = theme.periodColor
-
-        chunkyPaint.typeface = chunkyFont
-        condensedPaint.typeface = condensedFont
     }
 
     override fun onAttachedToWindow() {
@@ -234,183 +224,13 @@ class TockClockView @JvmOverloads constructor(
 
         when (theme.style) {
             ThemeStyle.POPPINS -> drawPoppinsClock(canvas, w, h, hour, minute, period)
-            ThemeStyle.CHUNKY_BLUE -> drawChunkyClock(canvas, w, h, hour, minute, isMultiColor = false)
-            ThemeStyle.BUBBLE_PURPLE -> drawChunkyClock(canvas, w, h, hour, minute, isMultiColor = true)
-            ThemeStyle.CONDENSED_ORANGE -> drawCondensedOrangeClock(canvas, w, h, hour, minute, period, cal)
             else -> drawDotMatrixClock(canvas, w, h, hour, minute, period, cal)
         }
 
         canvas.restore()
     }
 
-    // ── Theme 2 & 3: Chunky Bold Retro & Bubble Purple ────────────
-    private fun drawChunkyClock(
-        canvas: Canvas,
-        w: Float,
-        h: Float,
-        hour: Int,
-        minute: Int,
-        isMultiColor: Boolean
-    ) {
-        val density = resources.displayMetrics.density
-        val isLandscape = w > h
-        val timeStr = String.format("%02d:%02d", hour, minute)
-
-        val sidePadding = if (isLandscape) max(28f * density, w * 0.06f) else max(16f * density, w * 0.04f)
-        val availableW = w - sidePadding * 2f
-        val availableH = h * (if (isLandscape) 0.78f else 0.58f)
-
-        val testSize = 200f * density
-        chunkyPaint.textSize = testSize
-        val rawWidth = chunkyPaint.measureText(timeStr)
-        val scale = min(availableW / (rawWidth * 0.96f), availableH / (testSize * 0.75f))
-        val mainFontSize = testSize * scale
-        chunkyPaint.textSize = mainFontSize
-
-        val fm = chunkyPaint.fontMetrics
-        val textH = fm.descent - fm.ascent
-        val centerY = (h / 2f) + (textH / 2f) - fm.descent
-
-        val d1Str = String.format("%02d", hour).substring(0, 1)
-        val d2Str = String.format("%02d", hour).substring(1, 2)
-        val d3Str = String.format("%02d", minute).substring(0, 1)
-        val d4Str = String.format("%02d", minute).substring(1, 2)
-
-        val d1W = chunkyPaint.measureText(d1Str)
-        val d2W = chunkyPaint.measureText(d2Str)
-        val d3W = chunkyPaint.measureText(d3Str)
-        val d4W = chunkyPaint.measureText(d4Str)
-
-        val colonDotRadius = max(4f * density, mainFontSize * 0.055f)
-        val colonSpacing = max(8f * density, mainFontSize * 0.12f)
-        val colonW = (colonDotRadius * 2f) + (colonSpacing * 2f)
-
-        val overlap = mainFontSize * 0.05f
-        val totalBlockW = d1W + d2W - overlap + colonW + d3W + d4W - overlap
-        var curX = (w - totalBlockW) / 2f
-
-        // Colors for Chunky Blue
-        val blueColors = intArrayOf(
-            Color.parseColor("#0078FF"),
-            Color.parseColor("#2990FF"),
-            Color.parseColor("#0084FF"),
-            Color.parseColor("#3896FF")
-        )
-        // Colors for Funky Bubble Purple
-        val purpleColors = intArrayOf(
-            Color.parseColor("#D8639F"),
-            Color.parseColor("#9E93F8"),
-            Color.parseColor("#8274F5"),
-            Color.parseColor("#8E2192")
-        )
-        val colors = if (isMultiColor) purpleColors else blueColors
-
-        // Draw d1
-        chunkyPaint.color = colors[0]
-        canvas.drawText(d1Str, curX, centerY, chunkyPaint)
-        curX += d1W - overlap
-
-        // Draw d2
-        chunkyPaint.color = colors[1]
-        canvas.drawText(d2Str, curX, centerY, chunkyPaint)
-        curX += d2W
-
-        // Draw Colon (Two clean white round dots)
-        val colonCenterX = curX + colonSpacing + colonDotRadius
-        val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            style = Paint.Style.FILL
-        }
-        val colonGap = mainFontSize * 0.16f
-        canvas.drawCircle(colonCenterX, centerY - (textH * 0.35f) - colonGap, colonDotRadius, dotPaint)
-        canvas.drawCircle(colonCenterX, centerY - (textH * 0.35f) + colonGap, colonDotRadius, dotPaint)
-        curX += colonW
-
-        // Draw d3
-        chunkyPaint.color = colors[2]
-        canvas.drawText(d3Str, curX, centerY, chunkyPaint)
-        curX += d3W - overlap
-
-        // Draw d4
-        chunkyPaint.color = colors[3]
-        canvas.drawText(d4Str, curX, centerY, chunkyPaint)
-        curX += d4W
-
-        // Top right "AM"
-        val amPmPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#F0F4F8")
-            typeface = chunkyFont
-            textSize = mainFontSize * 0.16f
-        }
-        val amX = curX + 6f * density
-        val amY = centerY - (textH * 0.62f)
-        canvas.drawText("AM", amX, amY, amPmPaint)
-    }
-
-    // ── Theme 5: Condensed Retro Orange (Light Mode) ──────────────
-    private fun drawCondensedOrangeClock(
-        canvas: Canvas,
-        w: Float,
-        h: Float,
-        hour: Int,
-        minute: Int,
-        period: String?,
-        cal: Calendar
-    ) {
-        val density = resources.displayMetrics.density
-        val orangeColor = Color.parseColor("#F2380C")
-        val isLandscape = w > h
-
-        // Date Header (Top Center)
-        val days = arrayOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
-        val months = arrayOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
-        val dayStr = days[cal.get(Calendar.DAY_OF_WEEK) - 1]
-        val monthStr = months[cal.get(Calendar.MONTH)]
-        val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
-        val headerText = if (isPreview) "WED NOV 18" else "$dayStr $monthStr $dayOfMonth"
-
-        val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = orangeColor
-            typeface = condensedFont
-            textSize = max(11f * density, min(w, h) * 0.07f)
-            textAlign = Paint.Align.CENTER
-        }
-        val headerY = if (isLandscape) 22f * density else 28f * density
-        canvas.drawText(headerText, w / 2f, headerY, headerPaint)
-
-        // Main Digits: 20:02
-        val timeStr = String.format("%02d:%02d", hour, minute)
-        val testSize = 220f * density
-        condensedPaint.textSize = testSize
-        condensedPaint.color = orangeColor
-
-        val availableW = w * 0.88f
-        val availableH = h * 0.62f
-        val rawWidth = condensedPaint.measureText(timeStr)
-        val scale = min(availableW / rawWidth, availableH / (testSize * 0.8f))
-        val mainFontSize = testSize * scale
-        condensedPaint.textSize = mainFontSize
-
-        val fm = condensedPaint.fontMetrics
-        val textH = fm.descent - fm.ascent
-        val centerY = (h / 2f) + (textH / 2f) - fm.descent
-
-        val timeW = condensedPaint.measureText(timeStr)
-        val startX = (w - timeW) / 2f
-        canvas.drawText(timeStr, startX, centerY, condensedPaint)
-
-        // Bottom "AM" (Centered)
-        val bottomPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = orangeColor
-            typeface = condensedFont
-            textSize = max(12f * density, min(w, h) * 0.08f)
-            textAlign = Paint.Align.CENTER
-        }
-        val bottomY = h - (if (isLandscape) 12f * density else 18f * density)
-        canvas.drawText(period ?: "AM", w / 2f, bottomY, bottomPaint)
-    }
-
-    // ── Theme 4: Poppins Clean Typography Clock ──────────────────
+    // ── Theme 2: Poppins Clean Typography Clock ──────────────────
     private fun drawPoppinsClock(
         canvas: Canvas,
         w: Float,

@@ -32,8 +32,8 @@ object TockPreferences {
     fun setLowPower(ctx: Context, v: Boolean) = prefs(ctx).edit().putBoolean(KEY_LOW_POWER, v).apply()
 
     fun getFavorites(ctx: Context): Set<String> =
-        prefs(ctx).getStringSet(KEY_FAVORITES, setOf("classic", "chunky_blue", "bubble_purple", "poppins", "condensed_orange"))
-            ?: setOf("classic", "chunky_blue", "bubble_purple", "poppins", "condensed_orange")
+        prefs(ctx).getStringSet(KEY_FAVORITES, setOf("classic", "poppins"))
+            ?: setOf("classic", "poppins")
 
     fun isFavorite(ctx: Context, id: String): Boolean =
         getFavorites(ctx).contains(id)
