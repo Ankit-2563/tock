@@ -11,23 +11,33 @@
       android:theme="@style/AppTheme"
       android:supportsRtl="true">
 
-      <!-- Main Fullscreen Clock Activity -->
+      <!-- Themes Home Gallery Screen -->
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"
         android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
         android:launchMode="singleTask"
-        android:windowSoftInputMode="adjustResize"
         android:exported="true"
-        android:screenOrientation="sensorLandscape"
-        android:showWhenLocked="true"
-        android:turnScreenOn="true"
-        android:theme="@style/TockFullscreen">
+        android:screenOrientation="portrait"
+        android:theme="@style/HomeTheme">
         <intent-filter>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+
+      <!-- Fullscreen Landscape StandBy Clock -->
+      <activity
+        android:name=".ClockActivity"
+        android:label="@string/app_name"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+        android:launchMode="singleTask"
+        android:windowSoftInputMode="adjustResize"
+        android:exported="false"
+        android:screenOrientation="sensorLandscape"
+        android:showWhenLocked="true"
+        android:turnScreenOn="true"
+        android:theme="@style/TockFullscreen" />
 
       <!-- Native Android Screen Saver (DreamService) for StandBy charging dock mode -->
       <service

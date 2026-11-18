@@ -11,6 +11,7 @@ object TockPreferences {
     private const val KEY_DND_ENABLED = "dnd_enabled"
     private const val KEY_BURN_IN_PROTECTION = "burn_in_protection"
     private const val KEY_LOW_POWER = "low_power"
+    private const val KEY_FAVORITES = "favorites"
 
     private fun prefs(ctx: Context): SharedPreferences =
         ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -29,4 +30,24 @@ object TockPreferences {
 
     fun isLowPower(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_LOW_POWER, false)
     fun setLowPower(ctx: Context, v: Boolean) = prefs(ctx).edit().putBoolean(KEY_LOW_POWER, v).apply()
+
+    fun getFavorites(ctx: Context): Set<String> =
+        prefs(ctx).getStringSet(KEY_FAVORITES, setOf("classic", "chunky_blue", "bubble_purple", "poppins", "condensed_orange"))
+            ?: setOf("classic", "chunky_blue", "bubble_purple", "poppins", "condensed_orange")
+
+    fun isFavorite(ctx: Context, id: String): Boolean =
+        getFavorites(ctx).contains(id)
+
+    fun toggleFavorite(ctx: Context, id: String): Boolean {
+        val favs = getFavorites(ctx).toMutableSet()
+        val isNowFav = if (favs.contains(id)) {
+            favs.remove(id)
+            false
+        } else {
+            favs.add(id)
+            true
+        }
+        prefs(ctx).edit().putStringSet(KEY_FAVORITES, favs).apply()
+        return isNowFav
+    }
 }

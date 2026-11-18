@@ -4,7 +4,10 @@ import android.graphics.Color
 
 enum class ThemeStyle {
     DOT_MATRIX,
-    POPPINS
+    CHUNKY_BLUE,
+    BUBBLE_PURPLE,
+    POPPINS,
+    CONDENSED_ORANGE
 }
 
 data class ColorTheme(
@@ -20,24 +23,59 @@ data class ColorTheme(
     companion object {
         val CLASSIC = ColorTheme(
             id = "classic",
-            name = "Nothing Classic (Theme 1)",
-            background = Color.parseColor("#000000"),
+            name = "Nothing Dot Matrix",
+            background = Color.parseColor("#141817"),
             digitColor = Color.parseColor("#FCFAFE"),
             colonColor = Color.parseColor("#D71921"),
             metaColor = Color.parseColor("#FCFAFE"),
             periodColor = Color.parseColor("#D71921"),
             style = ThemeStyle.DOT_MATRIX
         )
+
+        val CHUNKY_BLUE = ColorTheme(
+            id = "chunky_blue",
+            name = "Chunky Electric Blue",
+            background = Color.parseColor("#000000"),
+            digitColor = Color.parseColor("#0084FF"),
+            colonColor = Color.parseColor("#FFFFFF"),
+            metaColor = Color.parseColor("#0084FF"),
+            periodColor = Color.parseColor("#FFFFFF"),
+            style = ThemeStyle.CHUNKY_BLUE
+        )
+
+        val BUBBLE_PURPLE = ColorTheme(
+            id = "bubble_purple",
+            name = "Funky Bubble Purple",
+            background = Color.parseColor("#000000"),
+            digitColor = Color.parseColor("#D8639F"),
+            colonColor = Color.parseColor("#FFFFFF"),
+            metaColor = Color.parseColor("#9D90F8"),
+            periodColor = Color.parseColor("#FFFFFF"),
+            style = ThemeStyle.BUBBLE_PURPLE
+        )
+
         val POPPINS = ColorTheme(
             id = "poppins",
-            name = "Poppins Clean (Theme 2)",
+            name = "Poppins Clean",
             background = Color.parseColor("#000000"),
-            digitColor = Color.parseColor("#E6E6E6"),
-            colonColor = Color.parseColor("#E6E6E6"),
-            metaColor = Color.parseColor("#E6E6E6"),
+            digitColor = Color.parseColor("#FCFAFE"),
+            colonColor = Color.parseColor("#FCFAFE"),
+            metaColor = Color.parseColor("#FCFAFE"),
             periodColor = Color.parseColor("#FFFFFF"),
             style = ThemeStyle.POPPINS
         )
+
+        val CONDENSED_ORANGE = ColorTheme(
+            id = "condensed_orange",
+            name = "Condensed Retro Orange",
+            background = Color.parseColor("#F7F6F8"),
+            digitColor = Color.parseColor("#F2380C"),
+            colonColor = Color.parseColor("#F2380C"),
+            metaColor = Color.parseColor("#F2380C"),
+            periodColor = Color.parseColor("#F2380C"),
+            style = ThemeStyle.CONDENSED_ORANGE
+        )
+
         val OLED = ColorTheme(
             id = "oled",
             name = "OLED Pure Black",
@@ -48,6 +86,7 @@ data class ColorTheme(
             periodColor = Color.parseColor("#D71921"),
             style = ThemeStyle.DOT_MATRIX
         )
+
         val NIGHT = ColorTheme(
             id = "night",
             name = "StandBy Red",
@@ -58,6 +97,7 @@ data class ColorTheme(
             periodColor = Color.parseColor("#D71921"),
             style = ThemeStyle.DOT_MATRIX
         )
+
         val MONO = ColorTheme(
             id = "monochrome",
             name = "Monochrome",
@@ -68,6 +108,7 @@ data class ColorTheme(
             periodColor = Color.parseColor("#FCFAFE"),
             style = ThemeStyle.DOT_MATRIX
         )
+
         val AMBER = ColorTheme(
             id = "amber",
             name = "Warm Amber",
@@ -78,6 +119,7 @@ data class ColorTheme(
             periodColor = Color.parseColor("#FF7043"),
             style = ThemeStyle.DOT_MATRIX
         )
+
         val EMERALD = ColorTheme(
             id = "emerald",
             name = "Matrix Green",
@@ -89,7 +131,7 @@ data class ColorTheme(
             style = ThemeStyle.DOT_MATRIX
         )
 
-        val ALL = listOf(CLASSIC, POPPINS, OLED, NIGHT, MONO, AMBER, EMERALD)
+        val ALL = listOf(CLASSIC, CHUNKY_BLUE, BUBBLE_PURPLE, POPPINS, CONDENSED_ORANGE, OLED, NIGHT, MONO, AMBER, EMERALD)
 
         fun byId(id: String): ColorTheme = ALL.firstOrNull { it.id == id } ?: CLASSIC
     }

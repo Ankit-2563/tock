@@ -4,6 +4,15 @@
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
     </style>
 
+    <!-- Theme for Themes Home Screen -->
+    <style name="HomeTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">#EBEAEB</item>
+        <item name="android:statusBarColor">#EBEAEB</item>
+        <item name="android:navigationBarColor">#EBEAEB</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+
     <!-- Fullscreen theme for the clock activity -->
     <style name="TockFullscreen" parent="Theme.AppCompat.NoActionBar">
         <item name="android:windowNoTitle">true</item>

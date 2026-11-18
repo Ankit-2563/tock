@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.os.BatteryManager
@@ -37,11 +38,17 @@ class TockClockView @JvmOverloads constructor(
     private val poppinsPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val poppinsAmPmPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
+    private val chunkyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val condensedPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
     // ── State ───────────────────────────────────────────────────
     private var theme: ColorTheme = ColorTheme.CLASSIC
     private var use24Hour = true
     private var burnInProtection = true
     private var lowPower = false
+
+    var isPreview = false
+    var mockTime: Pair<Int, Int>? = null
 
     private var batteryPercent = -1
     private var isCharging = false
@@ -49,11 +56,12 @@ class TockClockView @JvmOverloads constructor(
     // Burn-in shift
     private var burnInOffsetX = 0f
     private var burnInOffsetY = 0f
-    private var burnInTick = 0
 
     // Fonts
     private val nothingFont: Typeface = Typeface.createFromAsset(context.assets, "fonts/NothingFont5x7.ttf")
     private val poppinsFont: Typeface = Typeface.createFromAsset(context.assets, "fonts/Poppins-Regular.ttf")
+    private val chunkyFont: Typeface = Typeface.create("sans-serif-black", Typeface.BOLD)
+    private val condensedFont: Typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
 
     // Gesture detector for opening settings (tap or long press)
     var onOpenSettingsListener: (() -> Unit)? = null
@@ -133,7 +141,12 @@ class TockClockView @JvmOverloads constructor(
         metaPaint.color = theme.metaColor
         periodPaint.color = theme.periodColor
 
-        val activeFont = if (theme.style == ThemeStyle.POPPINS) poppinsFont else nothingFont
+        val activeFont = when (theme.style) {
+            ThemeStyle.POPPINS -> poppinsFont
+            ThemeStyle.CONDENSED_ORANGE -> condensedFont
+            ThemeStyle.CHUNKY_BLUE, ThemeStyle.BUBBLE_PURPLE -> chunkyFont
+            else -> nothingFont
+        }
         metaPaint.typeface = activeFont
         periodPaint.typeface = activeFont
 
@@ -141,35 +154,43 @@ class TockClockView @JvmOverloads constructor(
         poppinsPaint.color = theme.digitColor
         poppinsAmPmPaint.typeface = poppinsFont
         poppinsAmPmPaint.color = theme.periodColor
+
+        chunkyPaint.typeface = chunkyFont
+        condensedPaint.typeface = condensedFont
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        handler.post(tickRunnable)
-        context.registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        if (!isPreview) {
+            handler.post(tickRunnable)
+            try {
+                context.registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            } catch (_: Exception) {}
+        }
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        handler.removeCallbacks(tickRunnable)
-        try { context.unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
+        if (!isPreview) {
+            handler.removeCallbacks(tickRunnable)
+            try { context.unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (isPreview) return false
         gestureDetector.onTouchEvent(event)
         return true
     }
 
     private fun updateBurnIn() {
-        if (!burnInProtection) {
+        if (isPreview || !burnInProtection) {
             burnInOffsetX = 0f
             burnInOffsetY = 0f
             return
         }
         val density = resources.displayMetrics.density
-        // 14dp orbital shift (~38-42px on FHD+). Exceeds dot diameter so lit OLED subpixels completely clear their previous footprint.
         val step = 14f * density
-        // Advances by 1 orbital step every minute, synchronized with minute rollover
         val minuteEpoch = (System.currentTimeMillis() / 60_000L).toInt()
         val phase = minuteEpoch % 12
         val angleRad = phase * (2.0 * PI / 12.0)
@@ -180,18 +201,29 @@ class TockClockView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         canvas.save()
-        canvas.translate(burnInOffsetX, burnInOffsetY)
+        if (!isPreview) {
+            canvas.translate(burnInOffsetX, burnInOffsetY)
+        }
 
         val w = width.toFloat()
         val h = height.toFloat()
 
         val cal = Calendar.getInstance()
-        val rawHour = cal.get(Calendar.HOUR_OF_DAY)
-        val minute = cal.get(Calendar.MINUTE)
+        val rawHour: Int
+        val minute: Int
+
+        if (isPreview) {
+            val (mH, mM) = mockTime ?: Pair(20, 2)
+            rawHour = mH
+            minute = mM
+        } else {
+            rawHour = cal.get(Calendar.HOUR_OF_DAY)
+            minute = cal.get(Calendar.MINUTE)
+        }
 
         val hour: Int
         val period: String?
-        if (use24Hour) {
+        if (use24Hour && !isPreview) {
             hour = rawHour
             period = null
         } else {
@@ -200,17 +232,123 @@ class TockClockView @JvmOverloads constructor(
             period = if (rawHour >= 12) "PM" else "AM"
         }
 
-        if (theme.style == ThemeStyle.POPPINS) {
-            drawPoppinsClock(canvas, w, h, hour, minute, period, cal)
-        } else {
-            drawDotMatrixClock(canvas, w, h, hour, minute, period, cal)
+        when (theme.style) {
+            ThemeStyle.POPPINS -> drawPoppinsClock(canvas, w, h, hour, minute, period)
+            ThemeStyle.CHUNKY_BLUE -> drawChunkyClock(canvas, w, h, hour, minute, isMultiColor = false)
+            ThemeStyle.BUBBLE_PURPLE -> drawChunkyClock(canvas, w, h, hour, minute, isMultiColor = true)
+            ThemeStyle.CONDENSED_ORANGE -> drawCondensedOrangeClock(canvas, w, h, hour, minute, period, cal)
+            else -> drawDotMatrixClock(canvas, w, h, hour, minute, period, cal)
         }
 
         canvas.restore()
     }
 
-    // ── Theme 2: Poppins Clean Typography Clock ──────────────────
-    private fun drawPoppinsClock(
+    // ── Theme 2 & 3: Chunky Bold Retro & Bubble Purple ────────────
+    private fun drawChunkyClock(
+        canvas: Canvas,
+        w: Float,
+        h: Float,
+        hour: Int,
+        minute: Int,
+        isMultiColor: Boolean
+    ) {
+        val density = resources.displayMetrics.density
+        val isLandscape = w > h
+        val timeStr = String.format("%02d:%02d", hour, minute)
+
+        val sidePadding = if (isLandscape) max(28f * density, w * 0.06f) else max(16f * density, w * 0.04f)
+        val availableW = w - sidePadding * 2f
+        val availableH = h * (if (isLandscape) 0.78f else 0.58f)
+
+        val testSize = 200f * density
+        chunkyPaint.textSize = testSize
+        val rawWidth = chunkyPaint.measureText(timeStr)
+        val scale = min(availableW / (rawWidth * 0.96f), availableH / (testSize * 0.75f))
+        val mainFontSize = testSize * scale
+        chunkyPaint.textSize = mainFontSize
+
+        val fm = chunkyPaint.fontMetrics
+        val textH = fm.descent - fm.ascent
+        val centerY = (h / 2f) + (textH / 2f) - fm.descent
+
+        val d1Str = String.format("%02d", hour).substring(0, 1)
+        val d2Str = String.format("%02d", hour).substring(1, 2)
+        val d3Str = String.format("%02d", minute).substring(0, 1)
+        val d4Str = String.format("%02d", minute).substring(1, 2)
+
+        val d1W = chunkyPaint.measureText(d1Str)
+        val d2W = chunkyPaint.measureText(d2Str)
+        val d3W = chunkyPaint.measureText(d3Str)
+        val d4W = chunkyPaint.measureText(d4Str)
+
+        val colonDotRadius = max(4f * density, mainFontSize * 0.055f)
+        val colonSpacing = max(8f * density, mainFontSize * 0.12f)
+        val colonW = (colonDotRadius * 2f) + (colonSpacing * 2f)
+
+        val overlap = mainFontSize * 0.05f
+        val totalBlockW = d1W + d2W - overlap + colonW + d3W + d4W - overlap
+        var curX = (w - totalBlockW) / 2f
+
+        // Colors for Chunky Blue
+        val blueColors = intArrayOf(
+            Color.parseColor("#0078FF"),
+            Color.parseColor("#2990FF"),
+            Color.parseColor("#0084FF"),
+            Color.parseColor("#3896FF")
+        )
+        // Colors for Funky Bubble Purple
+        val purpleColors = intArrayOf(
+            Color.parseColor("#D8639F"),
+            Color.parseColor("#9E93F8"),
+            Color.parseColor("#8274F5"),
+            Color.parseColor("#8E2192")
+        )
+        val colors = if (isMultiColor) purpleColors else blueColors
+
+        // Draw d1
+        chunkyPaint.color = colors[0]
+        canvas.drawText(d1Str, curX, centerY, chunkyPaint)
+        curX += d1W - overlap
+
+        // Draw d2
+        chunkyPaint.color = colors[1]
+        canvas.drawText(d2Str, curX, centerY, chunkyPaint)
+        curX += d2W
+
+        // Draw Colon (Two clean white round dots)
+        val colonCenterX = curX + colonSpacing + colonDotRadius
+        val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.FILL
+        }
+        val colonGap = mainFontSize * 0.16f
+        canvas.drawCircle(colonCenterX, centerY - (textH * 0.35f) - colonGap, colonDotRadius, dotPaint)
+        canvas.drawCircle(colonCenterX, centerY - (textH * 0.35f) + colonGap, colonDotRadius, dotPaint)
+        curX += colonW
+
+        // Draw d3
+        chunkyPaint.color = colors[2]
+        canvas.drawText(d3Str, curX, centerY, chunkyPaint)
+        curX += d3W - overlap
+
+        // Draw d4
+        chunkyPaint.color = colors[3]
+        canvas.drawText(d4Str, curX, centerY, chunkyPaint)
+        curX += d4W
+
+        // Top right "AM"
+        val amPmPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#F0F4F8")
+            typeface = chunkyFont
+            textSize = mainFontSize * 0.16f
+        }
+        val amX = curX + 6f * density
+        val amY = centerY - (textH * 0.62f)
+        canvas.drawText("AM", amX, amY, amPmPaint)
+    }
+
+    // ── Theme 5: Condensed Retro Orange (Light Mode) ──────────────
+    private fun drawCondensedOrangeClock(
         canvas: Canvas,
         w: Float,
         h: Float,
@@ -220,21 +358,82 @@ class TockClockView @JvmOverloads constructor(
         cal: Calendar
     ) {
         val density = resources.displayMetrics.density
+        val orangeColor = Color.parseColor("#F2380C")
+        val isLandscape = w > h
+
+        // Date Header (Top Center)
+        val days = arrayOf("SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT")
+        val months = arrayOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
+        val dayStr = days[cal.get(Calendar.DAY_OF_WEEK) - 1]
+        val monthStr = months[cal.get(Calendar.MONTH)]
+        val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
+        val headerText = if (isPreview) "WED NOV 18" else "$dayStr $monthStr $dayOfMonth"
+
+        val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = orangeColor
+            typeface = condensedFont
+            textSize = max(11f * density, min(w, h) * 0.07f)
+            textAlign = Paint.Align.CENTER
+        }
+        val headerY = if (isLandscape) 22f * density else 28f * density
+        canvas.drawText(headerText, w / 2f, headerY, headerPaint)
+
+        // Main Digits: 20:02
+        val timeStr = String.format("%02d:%02d", hour, minute)
+        val testSize = 220f * density
+        condensedPaint.textSize = testSize
+        condensedPaint.color = orangeColor
+
+        val availableW = w * 0.88f
+        val availableH = h * 0.62f
+        val rawWidth = condensedPaint.measureText(timeStr)
+        val scale = min(availableW / rawWidth, availableH / (testSize * 0.8f))
+        val mainFontSize = testSize * scale
+        condensedPaint.textSize = mainFontSize
+
+        val fm = condensedPaint.fontMetrics
+        val textH = fm.descent - fm.ascent
+        val centerY = (h / 2f) + (textH / 2f) - fm.descent
+
+        val timeW = condensedPaint.measureText(timeStr)
+        val startX = (w - timeW) / 2f
+        canvas.drawText(timeStr, startX, centerY, condensedPaint)
+
+        // Bottom "AM" (Centered)
+        val bottomPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = orangeColor
+            typeface = condensedFont
+            textSize = max(12f * density, min(w, h) * 0.08f)
+            textAlign = Paint.Align.CENTER
+        }
+        val bottomY = h - (if (isLandscape) 12f * density else 18f * density)
+        canvas.drawText(period ?: "AM", w / 2f, bottomY, bottomPaint)
+    }
+
+    // ── Theme 4: Poppins Clean Typography Clock ──────────────────
+    private fun drawPoppinsClock(
+        canvas: Canvas,
+        w: Float,
+        h: Float,
+        hour: Int,
+        minute: Int,
+        period: String?
+    ) {
+        val density = resources.displayMetrics.density
         val isLandscape = w > h
 
         val timeStr = String.format("%02d:%02d", hour, minute)
 
-        val sidePadding = if (isLandscape) max(64f * density, w * 0.08f) else max(32f * density, w * 0.05f)
+        val sidePadding = if (isLandscape) max(28f * density, w * 0.06f) else max(16f * density, w * 0.04f)
         val availableW = w - sidePadding * 2f
         val availableH = h * (if (isLandscape) 0.74f else 0.52f)
 
-        // Measure with reference size
         val testSize = 250f * density
         poppinsPaint.textSize = testSize
         poppinsAmPmPaint.textSize = testSize * 0.29f
 
         val rawTimeW = poppinsPaint.measureText(timeStr)
-        val rawAmW = if (period != null) poppinsAmPmPaint.measureText(period) + 16f * density else 0f
+        val rawAmW = poppinsAmPmPaint.measureText(period ?: "AM") + 16f * density
         val rawTotalW = rawTimeW + rawAmW
 
         val scaleW = availableW / rawTotalW
@@ -248,8 +447,8 @@ class TockClockView @JvmOverloads constructor(
 
         val timeWidth = poppinsPaint.measureText(timeStr)
         val amPmGap = 16f * density * scale
-        val amPmWidth = if (period != null) poppinsAmPmPaint.measureText(period) else 0f
-        val totalBlockW = timeWidth + (if (period != null) amPmGap + amPmWidth else 0f)
+        val amPmWidth = poppinsAmPmPaint.measureText(period ?: "AM")
+        val totalBlockW = timeWidth + amPmGap + amPmWidth
 
         val startX = (w - totalBlockW) / 2f
 
@@ -257,14 +456,9 @@ class TockClockView @JvmOverloads constructor(
         val textHeight = fontMetrics.descent - fontMetrics.ascent
         val baselineY = (h / 2f) + (textHeight / 2f) - fontMetrics.descent
 
-        // Draw digits in Poppins font
         canvas.drawText(timeStr, startX, baselineY, poppinsPaint)
-
-        // Draw "AM" or "PM" sitting at the baseline of the digits
-        if (period != null) {
-            val amPmX = startX + timeWidth + amPmGap
-            canvas.drawText(period, amPmX, baselineY, poppinsAmPmPaint)
-        }
+        val amPmX = startX + timeWidth + amPmGap
+        canvas.drawText(period ?: "AM", amPmX, baselineY, poppinsAmPmPaint)
     }
 
     // ── Theme 1: Nothing 5x7 Dot Matrix Clock ────────────────────
@@ -285,19 +479,19 @@ class TockClockView @JvmOverloads constructor(
         val d3 = minute / 10
         val d4 = minute % 10
 
-        val minSidePadding = max(64f, 64f * density)
+        val minSidePadding = if (isPreview) 16f * density else max(64f, 64f * density)
         val sidePadding = if (isLandscape) max(minSidePadding, w * 0.085f) else max(minSidePadding, w * 0.06f)
 
-        val headerTopPadding = if (isLandscape) max(24f, 24f * density) else max(48f, 48f * density)
-        val metaFontSize = max(14f * density, min(w, h) * 0.045f)
-        val periodFontSize = max(16f * density, min(w, h) * 0.05f)
+        val headerTopPadding = if (isLandscape) (if (isPreview) 10f * density else 24f * density) else 48f * density
+        val metaFontSize = if (isPreview) max(8f * density, min(w, h) * 0.06f) else max(14f * density, min(w, h) * 0.045f)
+        val periodFontSize = if (isPreview) max(9f * density, min(w, h) * 0.065f) else max(16f * density, min(w, h) * 0.05f)
 
         metaPaint.textSize = metaFontSize
         periodPaint.textSize = periodFontSize
 
         val headerY = headerTopPadding + metaFontSize
-        val headerTotalHeight = headerY + 16f * density
-        val bottomMargin = 20f * density
+        val headerTotalHeight = headerY + (if (isPreview) 6f * density else 16f * density)
+        val bottomMargin = if (isPreview) 8f * density else 20f * density
 
         val availableW = w - (sidePadding * 2f)
         val availableH = h - headerTotalHeight - bottomMargin
@@ -306,15 +500,14 @@ class TockClockView @JvmOverloads constructor(
         val byHeight = availableH / 8.5f
         val rawDot = if (isLandscape) min(byWidth, byHeight) else min(availableW / 28.5f, availableH / 12f)
 
-        val dotSize = max(6f * density, rawDot)
+        val dotSize = max(3.5f * density, rawDot)
         val dotRadius = dotSize / 2f
-        val gap = max(2f, dotSize * 0.22f)
-        val digitGap = max(8f * density, dotSize * 1.05f)
+        val gap = max(1.5f, dotSize * 0.22f)
+        val digitGap = max(4f * density, dotSize * 1.05f)
 
         val digitWidth = 5 * dotSize + 4 * gap
         val digitHeight = 7 * dotSize + 6 * gap
 
-        // Optical column bounds
         val d1LeftCol = getLeftmostCol(d1)
         val d2RightCol = getRightmostCol(d2)
         val d3LeftCol = getLeftmostCol(d3)
@@ -324,7 +517,7 @@ class TockClockView @JvmOverloads constructor(
         val rawX2 = rawX1 + digitWidth + digitGap
         val d2RightDotX = rawX2 + d2RightCol * (dotSize + gap) + dotRadius
 
-        val colonSpacing = max(10f * density, dotSize * 1.55f)
+        val colonSpacing = max(6f * density, dotSize * 1.55f)
 
         val colonCenterX = d2RightDotX + colonSpacing
         val d3LeftDotX = colonCenterX + colonSpacing
@@ -351,77 +544,91 @@ class TockClockView @JvmOverloads constructor(
         val months = arrayOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
         val dayStr = days[cal.get(Calendar.DAY_OF_WEEK) - 1]
         val monthStr = months[cal.get(Calendar.MONTH)]
-        val dateNum = cal.get(Calendar.DAY_OF_MONTH)
-        val dateStr = "$dayStr $monthStr $dateNum"
+        val dayOfMonth = cal.get(Calendar.DAY_OF_MONTH)
+        val dateText = if (isPreview) "WED NOV 18" else "$dayStr $monthStr $dayOfMonth"
 
-        var leftCurX = visualStartX - dotRadius
-        canvas.drawText(dateStr, leftCurX, headerY, metaPaint)
-        leftCurX += metaPaint.measureText(dateStr)
+        val effectiveBattery = if (isPreview) 86 else batteryPercent
+        val effectiveCharging = if (isPreview) true else isCharging
 
-        if (batteryPercent >= 0) {
-            val dashStr = " - "
-            canvas.drawText(dashStr, leftCurX, headerY, metaPaint)
-            leftCurX += metaPaint.measureText(dashStr)
+        var headerLeftX = d1LeftDotX + shiftX
+        canvas.drawText(dateText, headerLeftX, headerY, metaPaint)
+        headerLeftX += metaPaint.measureText(dateText) + (10f * density)
 
-            if (isCharging) {
-                val boltHeight = metaFontSize * 1.15f
-                val boltTop = headerY - metaFontSize * 0.95f
-                val boltWidth = ChargingBolt.draw(canvas, leftCurX + 4f, boltTop, boltHeight, boltPaint)
-                leftCurX += boltWidth + 10f
+        if (effectiveCharging) {
+            val boltH = metaFontSize * 0.95f
+            val boltW = boltH * (ChargingBolt.SVG_WIDTH / ChargingBolt.SVG_HEIGHT)
+            val boltTop = headerY - metaFontSize * 0.85f
+            val scale = boltH / ChargingBolt.SVG_HEIGHT
+            for (circle in ChargingBolt.circles) {
+                val cx = headerLeftX + circle.cx * scale
+                val cy = boltTop + circle.cy * scale
+                val r = circle.r * scale
+                canvas.drawCircle(cx, cy, r, boltPaint)
             }
-
-            val battStr = "$batteryPercent%"
-            canvas.drawText(battStr, leftCurX, headerY, metaPaint)
+            headerLeftX += boltW + (8f * density)
         }
 
-        if (period != null) {
-            val periodWidth = periodPaint.measureText(period)
-            val periodX = (visualStartX + totalVisualWidth + dotRadius) - periodWidth
-            canvas.drawText(period, periodX, headerY, periodPaint)
+        if (effectiveBattery >= 0) {
+            val batText = "$effectiveBattery%"
+            canvas.drawText(batText, headerLeftX, headerY, metaPaint)
         }
 
-        // Main Digits
-        drawDigit(canvas, d1, x1, startY, dotSize, gap)
-        drawDigit(canvas, d2, x2, startY, dotSize, gap)
+        val periodText = period ?: "AM"
+        val periodW = periodPaint.measureText(periodText)
+        val periodX = (d4RightDotX + shiftX) - periodW
+        canvas.drawText(periodText, periodX, headerY, periodPaint)
 
-        val colonDot1CenterY = startY + (2 * (dotSize + gap)) + dotRadius
-        val colonDot2CenterY = startY + (4 * (dotSize + gap)) + dotRadius
-        canvas.drawCircle(finalColonCenterX, colonDot1CenterY, dotRadius, colonPaint)
-        canvas.drawCircle(finalColonCenterX, colonDot2CenterY, dotRadius, colonPaint)
+        // Draw Digits
+        drawDotDigit(canvas, d1, x1, startY, dotSize, gap)
+        drawDotDigit(canvas, d2, x2, startY, dotSize, gap)
 
-        drawDigit(canvas, d3, x3, startY, dotSize, gap)
-        drawDigit(canvas, d4, x4, startY, dotSize, gap)
+        // Draw Colon
+        val colonR = dotRadius
+        val dot1CenterY = startY + (2 * (dotSize + gap)) + colonR
+        val dot2CenterY = startY + (4 * (dotSize + gap)) + colonR
+        canvas.drawCircle(finalColonCenterX, dot1CenterY, colonR, colonPaint)
+        canvas.drawCircle(finalColonCenterX, dot2CenterY, colonR, colonPaint)
+
+        drawDotDigit(canvas, d3, x3, startY, dotSize, gap)
+        drawDotDigit(canvas, d4, x4, startY, dotSize, gap)
     }
 
     private fun getLeftmostCol(digit: Int): Int {
-        val pattern = DotMatrixFont.getDigit(digit)
+        val matrix = DotMatrixFont.getDigit(digit)
         for (col in 0 until 5) {
             for (row in 0 until 7) {
-                if (pattern[row][col]) return col
+                if (matrix[row][col]) return col
             }
         }
         return 0
     }
 
     private fun getRightmostCol(digit: Int): Int {
-        val pattern = DotMatrixFont.getDigit(digit)
+        val matrix = DotMatrixFont.getDigit(digit)
         for (col in 4 downTo 0) {
             for (row in 0 until 7) {
-                if (pattern[row][col]) return col
+                if (matrix[row][col]) return col
             }
         }
         return 4
     }
 
-    private fun drawDigit(canvas: Canvas, digit: Int, x: Float, y: Float, dotSize: Float, gap: Float) {
-        val pattern = DotMatrixFont.getDigit(digit)
-        val r = dotSize / 2f
+    private fun drawDotDigit(
+        canvas: Canvas,
+        digit: Int,
+        startX: Float,
+        startY: Float,
+        dotSize: Float,
+        gap: Float
+    ) {
+        val matrix = DotMatrixFont.getDigit(digit)
+        val dotRadius = dotSize / 2f
         for (row in 0 until 7) {
+            val cy = startY + row * (dotSize + gap) + dotRadius
             for (col in 0 until 5) {
-                if (pattern[row][col]) {
-                    val cx = x + col * (dotSize + gap) + r
-                    val cy = y + row * (dotSize + gap) + r
-                    canvas.drawCircle(cx, cy, r, digitPaint)
+                if (matrix[row][col]) {
+                    val cx = startX + col * (dotSize + gap) + dotRadius
+                    canvas.drawCircle(cx, cy, dotRadius, digitPaint)
                 }
             }
         }
