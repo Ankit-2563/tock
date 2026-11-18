@@ -147,10 +147,10 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         }
 
         divider()
-        switchRow("Acoustic Chime & Ticks", "Plays a gentle 'tak-tak' on minutes and a warm chime on hours (tap to test)", TockPreferences.isSoundEnabled(ctx)) {
+        switchRow("Acoustic Mechanical Ticks", "Subtle clock tick on minutes and a deep heavy mechanical tick on hours (tap to test)", TockPreferences.isSoundEnabled(ctx)) {
             TockPreferences.setSoundEnabled(ctx, it)
             if (it) {
-                TockAudioPlayer.playMinuteTick(ctx)
+                TockAudioPlayer.playHourChime(ctx)
             }
         }
 
