@@ -476,8 +476,8 @@ class TockClockView @JvmOverloads constructor(
         val density = resources.displayMetrics.density
         val isLandscape = w > h
 
-        val availableW = w * (if (isLandscape) 0.94f else 0.90f)
-        val availableH = h * (if (isLandscape) 0.80f else 0.62f)
+        val availableW = w * (if (isLandscape) 0.96f else 0.96f)
+        val availableH = h * (if (isLandscape) 0.82f else 0.76f)
 
         val testSize = 250f * density
         bigTymPaint1.textSize = testSize
@@ -487,9 +487,10 @@ class TockClockView @JvmOverloads constructor(
         val testRefW = bigTymPaint1.measureText("0")
         val rawDigitH = testSize * 0.70f
 
-        val rawOverlap = testRefW * 0.06f
-        val rawColonDotR = rawDigitH * 0.095f
-        val rawColonGap = rawColonDotR * 1.3f
+        // Overlap: d0-d1 overlap and d2-d3 overlap by 20% of slot width
+        val rawOverlap = testRefW * 0.20f
+        val rawColonDotR = rawDigitH * 0.085f
+        val rawColonGap = rawColonDotR * 2.0f
 
         val rawTotalW = (testRefW * 2f - rawOverlap) * 2f + rawColonGap
 
@@ -502,9 +503,9 @@ class TockClockView @JvmOverloads constructor(
         val baselineY = (h / 2f) + (finalDigitH / 2f)
 
         val slotW = bigTymPaint1.measureText("0")
-        val fOverlap = slotW * 0.06f
-        val fColonDotR = finalDigitH * 0.095f
-        val fColonGap = fColonDotR * 1.3f
+        val fOverlap = slotW * 0.20f
+        val fColonDotR = finalDigitH * 0.085f
+        val fColonGap = fColonDotR * 2.0f
 
         val totalW = (slotW * 2f - fOverlap) * 2f + fColonGap
         val startX = (w - totalW) / 2f
@@ -530,15 +531,15 @@ class TockClockView @JvmOverloads constructor(
         // 4. Draw d3 (80% opacity #4CB0FD, overlaps d2)
         drawAnimatedTextDigit(canvas, 3, d3, slot3X, baselineY, bigTymPaint2, slotW, finalDigitH)
 
-        // 5. Draw Colon (Two #E6E6E6 dots slightly overlapping d1 and d2 edges)
+        // 5. Draw Colon (Two #E6E6E6 dots at the seam between d1 and d2)
         val dotOffset = finalDigitH * 0.20f
         canvas.drawCircle(colonCenterX, (h / 2f) - dotOffset, fColonDotR, bigTymColonPaint)
         canvas.drawCircle(colonCenterX, (h / 2f) + dotOffset, fColonDotR, bigTymColonPaint)
 
-        // 6. AM at top right (above d3)
+        // 6. AM/PM at top right — smaller
         if (isPreview || period != null) {
             val amText = if (isPreview) "AM" else period ?: "AM"
-            bigTymAmPaint.textSize = finalFontSize * 0.15f
+            bigTymAmPaint.textSize = finalFontSize * 0.12f
             val amW = bigTymAmPaint.measureText(amText)
             val amX = slot3X + slotW - amW
             val amY = (h / 2f) - (finalDigitH / 2f) - (4f * density)
@@ -570,8 +571,8 @@ class TockClockView @JvmOverloads constructor(
         // Elongate font height: condense horizontal width by 20% and expand available height
         candyPaint.textScaleX = 0.80f
 
-        val availableW = w * (if (isLandscape) 0.92f else 0.88f)
-        val availableH = h * (if (isLandscape) 0.78f else 0.62f)
+        val availableW = w * (if (isLandscape) 0.92f else 0.90f)
+        val availableH = h * (if (isLandscape) 0.80f else 0.70f)
 
         val testSize = 250f * density
         candyPaint.textSize = testSize
@@ -583,9 +584,9 @@ class TockClockView @JvmOverloads constructor(
         val digitH = fm.descent - fm.ascent
 
         val colonDotR = digitH * 0.082f
-        val colonGap = digitH * 0.12f
+        val colonGap = digitH * 0.10f
         val colonTotalW = (colonGap * 2f) + (colonDotR * 2f)
-        val digitGap = digitH * 0.07f
+        val digitGap = digitH * 0.06f
 
         val totalDigitsW = (testRefW * 4f) + (digitGap * 2f) + colonTotalW
 
@@ -599,14 +600,15 @@ class TockClockView @JvmOverloads constructor(
 
         val slotW = candyPaint.measureText("0")
         val fColonDotR = finalDigitH * 0.082f
-        val fColonGap = finalDigitH * 0.12f
+        val fColonGap = finalDigitH * 0.10f
         val fColonTotalW = (fColonGap * 2f) + (fColonDotR * 2f)
-        val fDigitGap = finalDigitH * 0.07f
+        val fDigitGap = finalDigitH * 0.06f
 
-        val finalTotalW = (slotW * 4f) + (fDigitGap * 2f) + fColonTotalW
-        val startX = (w - finalTotalW) / 2f
+        // Total width of digits + colon only (no AM/PM included in centering)
+        val digitsOnlyW = (slotW * 4f) + (fDigitGap * 2f) + fColonTotalW
+        val digitsStartX = (w - digitsOnlyW) / 2f
 
-        val slot0X = startX
+        val slot0X = digitsStartX
         val slot1X = slot0X + slotW + fDigitGap
         val colonCenterX = slot1X + slotW + fColonGap + fColonDotR
         val slot2X = colonCenterX + fColonDotR + fColonGap
@@ -637,10 +639,11 @@ class TockClockView @JvmOverloads constructor(
         if (isPreview || period != null) {
             val amText = if (isPreview) "AM" else period ?: "AM"
             candyAmPaint.textScaleX = 1.0f
-            candyAmPaint.textSize = finalFontSize * 0.16f
-            val amX = slot3X + slotW + (2f * density)
+            candyAmPaint.textSize = finalFontSize * 0.14f
+            val amW = candyAmPaint.measureText(amText)
+            val amX = w - (16f * density) - amW
             val amY = baselineY + finalFm.ascent + (finalDigitH * 0.16f)
-            canvas.drawText(amText, min(amX, w - (12f * density) - candyAmPaint.measureText(amText)), max(amY, 22f * density), candyAmPaint)
+            canvas.drawText(amText, amX, max(amY, 22f * density), candyAmPaint)
         }
     }
 
@@ -659,7 +662,7 @@ class TockClockView @JvmOverloads constructor(
         val density = resources.displayMetrics.density
         val isLandscape = w > h
 
-        // 1. Top Date Header (e.g. "WED NOV 18")
+        // 1. Top Date Header (e.g. "WED NOV 18") — larger
         val headerText = if (isPreview) {
             "WED NOV 18"
         } else {
@@ -671,16 +674,16 @@ class TockClockView @JvmOverloads constructor(
             "$dayStr $monthStr $dayNum"
         }
 
-        val headerSize = if (isLandscape) max(12f * density, h * 0.065f) else max(11f * density, min(w, h) * 0.095f)
+        val headerSize = if (isLandscape) max(16f * density, h * 0.09f) else max(13f * density, min(w, h) * 0.11f)
         bloomMetaPaint.textSize = headerSize
         bloomMetaPaint.textAlign = Paint.Align.CENTER
 
-        val headerY = if (isLandscape) max(15f * density, h * 0.082f) else (h * 0.075f) - bloomMetaPaint.fontMetrics.ascent
+        val headerY = if (isLandscape) max(18f * density, h * 0.10f) else (h * 0.085f) - bloomMetaPaint.fontMetrics.ascent
         canvas.drawText(headerText, w / 2f, headerY, bloomMetaPaint)
 
-        // 2. Main Time ("20:02")
-        val availableW = w * (if (isLandscape) 0.94f else 0.88f)
-        val availableH = h * (if (isLandscape) 0.76f else 0.54f)
+        // 2. Main Time ("20:02") — slightly smaller to leave room for header/footer
+        val availableW = w * (if (isLandscape) 0.90f else 0.84f)
+        val availableH = h * (if (isLandscape) 0.65f else 0.48f)
 
         val testSize = 250f * density
         bloomDigitPaint.textSize = testSize
@@ -726,11 +729,11 @@ class TockClockView @JvmOverloads constructor(
         drawAnimatedTextDigit(canvas, 2, d2, slot2X, baselineY, bloomDigitPaint, slotW, finalDigitH)
         drawAnimatedTextDigit(canvas, 3, d3, slot3X, baselineY, bloomDigitPaint, slotW, finalDigitH)
 
-        // 3. Bottom Period ("AM" / "PM")
+        // 3. Bottom Period ("AM" / "PM") — larger
         if (isPreview || period != null) {
             val amText = if (isPreview) "AM" else period ?: "AM"
             bloomMetaPaint.textSize = headerSize
-            val amY = if (isLandscape) h - max(10f * density, h * 0.040f) else h - (h * 0.07f)
+            val amY = if (isLandscape) h - max(14f * density, h * 0.055f) else h - (h * 0.06f)
             canvas.drawText(amText, w / 2f, amY, bloomMetaPaint)
         }
     }
