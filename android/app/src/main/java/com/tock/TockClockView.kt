@@ -42,6 +42,10 @@ class TockClockView @JvmOverloads constructor(
     private val bloomMetaPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val bloomColonPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
+    private val candyPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val candyColonPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val candyAmPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
     // ── State ───────────────────────────────────────────────────
     private var theme: ColorTheme = ColorTheme.CLASSIC
     private var use24Hour = true
@@ -66,6 +70,20 @@ class TockClockView @JvmOverloads constructor(
     } catch (_: Exception) {
         Typeface.create("sans-serif-condensed", Typeface.BOLD)
     }
+    private val candyFont: Typeface = listOf(
+        "fonts/ChironGoRoundTC-Black.otf",
+        "fonts/ChironGoRoundTC-Black.ttf",
+        "fonts/Chiron GoRound TC Black.otf",
+        "fonts/Chiron GoRound TC Black.ttf",
+        "fonts/ChironGoRoundTC.otf",
+        "fonts/ChironGoRoundTC.ttf"
+    ).firstNotNullOfOrNull { path ->
+        try {
+            Typeface.createFromAsset(context.assets, path)
+        } catch (_: Exception) {
+            null
+        }
+    } ?: Typeface.create("sans-serif-black", Typeface.BOLD)
 
     // Gesture detector for opening settings (tap or long press)
     var onOpenSettingsListener: (() -> Unit)? = null
@@ -164,6 +182,12 @@ class TockClockView @JvmOverloads constructor(
         bloomMetaPaint.color = theme.metaColor
         bloomColonPaint.color = theme.colonColor
         bloomColonPaint.style = Paint.Style.FILL
+
+        candyPaint.typeface = candyFont
+        candyAmPaint.typeface = candyFont
+        candyAmPaint.color = Color.parseColor("#E6E6E6")
+        candyColonPaint.color = Color.parseColor("#E6E6E6")
+        candyColonPaint.style = Paint.Style.FILL
     }
 
     override fun onAttachedToWindow() {
@@ -242,10 +266,115 @@ class TockClockView @JvmOverloads constructor(
         when (theme.style) {
             ThemeStyle.POPPINS -> drawPoppinsClock(canvas, w, h, hour, minute, period)
             ThemeStyle.TOCK_BLOOM -> drawBloomClock(canvas, w, h, hour, minute, period, cal)
+            ThemeStyle.CANDY_CLOCK -> drawCandyClock(canvas, w, h, hour, minute, period)
             else -> drawDotMatrixClock(canvas, w, h, hour, minute, period, cal)
         }
 
         canvas.restore()
+    }
+
+    // ── Theme 4: Candy Clock ─────────────────────────────────────
+    private fun drawCandyClock(
+        canvas: Canvas,
+        w: Float,
+        h: Float,
+        hour: Int,
+        minute: Int,
+        period: String?
+    ) {
+        val density = resources.displayMetrics.density
+        val isLandscape = w > h
+
+        val d1Str = String.format("%02d", hour).substring(0, 1)
+        val d2Str = String.format("%02d", hour).substring(1, 2)
+        val d3Str = String.format("%02d", minute).substring(0, 1)
+        val d4Str = String.format("%02d", minute).substring(1, 2)
+
+        val digitColors = intArrayOf(
+            Color.parseColor("#D170B3"),
+            Color.parseColor("#B09BF9"),
+            Color.parseColor("#A590F7"),
+            Color.parseColor("#9B3AA5")
+        )
+
+        val availableW = w * (if (isLandscape) 0.88f else 0.90f)
+        val availableH = h * (if (isLandscape) 0.68f else 0.58f)
+
+        val testSize = 220f * density
+        candyPaint.textSize = testSize
+        candyPaint.typeface = candyFont
+
+        val w1 = candyPaint.measureText(d1Str)
+        val w2 = candyPaint.measureText(d2Str)
+        val w3 = candyPaint.measureText(d3Str)
+        val w4 = candyPaint.measureText(d4Str)
+
+        val fm = candyPaint.fontMetrics
+        val digitH = fm.descent - fm.ascent
+
+        val colonDotR = digitH * 0.082f
+        val colonGap = digitH * 0.17f
+        val colonTotalW = (colonGap * 2f) + (colonDotR * 2f)
+        val digitGap = digitH * 0.09f
+
+        val totalDigitsW = w1 + digitGap + w2 + colonTotalW + w3 + digitGap + w4
+
+        val scale = min(availableW / totalDigitsW, availableH / digitH)
+        val finalFontSize = testSize * scale
+        candyPaint.textSize = finalFontSize
+
+        val finalFm = candyPaint.fontMetrics
+        val finalDigitH = finalFm.descent - finalFm.ascent
+        val baselineY = (h / 2f) - (finalFm.ascent + finalFm.descent) / 2f
+
+        val fw1 = candyPaint.measureText(d1Str)
+        val fw2 = candyPaint.measureText(d2Str)
+        val fw3 = candyPaint.measureText(d3Str)
+        val fw4 = candyPaint.measureText(d4Str)
+
+        val fColonDotR = finalDigitH * 0.082f
+        val fColonGap = finalDigitH * 0.17f
+        val fColonTotalW = (fColonGap * 2f) + (fColonDotR * 2f)
+        val fDigitGap = finalDigitH * 0.09f
+
+        val finalTotalW = fw1 + fDigitGap + fw2 + fColonTotalW + fw3 + fDigitGap + fw4
+        var curX = (w - finalTotalW) / 2f
+
+        // Draw d1
+        candyPaint.color = digitColors[0]
+        canvas.drawText(d1Str, curX, baselineY, candyPaint)
+        curX += fw1 + fDigitGap
+
+        // Draw d2
+        candyPaint.color = digitColors[1]
+        canvas.drawText(d2Str, curX, baselineY, candyPaint)
+        curX += fw2
+
+        // Draw Colon (Two #E6E6E6 dots)
+        val colonCenterX = curX + fColonGap + fColonDotR
+        val dotOffset = finalDigitH * 0.20f
+        canvas.drawCircle(colonCenterX, (h / 2f) - dotOffset, fColonDotR, candyColonPaint)
+        canvas.drawCircle(colonCenterX, (h / 2f) + dotOffset, fColonDotR, candyColonPaint)
+        curX += fColonTotalW
+
+        // Draw d3
+        candyPaint.color = digitColors[2]
+        canvas.drawText(d3Str, curX, baselineY, candyPaint)
+        curX += fw3 + fDigitGap
+
+        // Draw d4
+        val d4StartX = curX
+        candyPaint.color = digitColors[3]
+        canvas.drawText(d4Str, d4StartX, baselineY, candyPaint)
+
+        // AM at top right (above d4)
+        if (isPreview || period != null) {
+            val amText = if (isPreview) "AM" else period ?: "AM"
+            candyAmPaint.textSize = finalFontSize * 0.17f
+            val amX = d4StartX + fw4 + (2f * density)
+            val amY = baselineY + finalFm.ascent + (finalDigitH * 0.18f)
+            canvas.drawText(amText, min(amX, w - (12f * density) - candyAmPaint.measureText(amText)), max(amY, 24f * density), candyAmPaint)
+        }
     }
 
     // ── Theme 3: Tock Bloom Clock ────────────────────────────────

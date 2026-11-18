@@ -5,7 +5,8 @@ import android.graphics.Color
 enum class ThemeStyle {
     DOT_MATRIX,
     POPPINS,
-    TOCK_BLOOM
+    TOCK_BLOOM,
+    CANDY_CLOCK
 }
 
 data class ColorTheme(
@@ -52,7 +53,18 @@ data class ColorTheme(
             style = ThemeStyle.TOCK_BLOOM
         )
 
-        val ALL = listOf(CLASSIC, POPPINS, TOCK_BLOOM)
+        val CANDY_CLOCK = ColorTheme(
+            id = "candy_clock",
+            name = "candy clock",
+            background = Color.parseColor("#000000"),
+            digitColor = Color.parseColor("#D170B3"),
+            colonColor = Color.parseColor("#E6E6E6"),
+            metaColor = Color.parseColor("#E6E6E6"),
+            periodColor = Color.parseColor("#E6E6E6"),
+            style = ThemeStyle.CANDY_CLOCK
+        )
+
+        val ALL = listOf(CLASSIC, POPPINS, TOCK_BLOOM, CANDY_CLOCK)
 
         fun byId(id: String): ColorTheme = ALL.firstOrNull { it.id == id } ?: CLASSIC
     }
