@@ -59,6 +59,11 @@ class TockClockView @JvmOverloads constructor(
     private val candyColonPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val candyAmPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
+    private val bigTymPaint1 = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bigTymPaint2 = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bigTymColonPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bigTymAmPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+
     // ── State ───────────────────────────────────────────────────
     private var theme: ColorTheme = ColorTheme.CLASSIC
     private var use24Hour = true
@@ -82,6 +87,11 @@ class TockClockView @JvmOverloads constructor(
         Typeface.createFromAsset(context.assets, "fonts/Chairdrobe Rounded Bold.otf")
     } catch (_: Exception) {
         Typeface.create("sans-serif-condensed", Typeface.BOLD)
+    }
+    private val fredokaFont: Typeface = try {
+        Typeface.createFromAsset(context.assets, "fonts/Fredoka-Bold.ttf")
+    } catch (_: Exception) {
+        Typeface.create("sans-serif-black", Typeface.BOLD)
     }
     private val candyFont: Typeface = listOf(
         "fonts/ChironGoRoundTC-Black.otf",
@@ -201,6 +211,20 @@ class TockClockView @JvmOverloads constructor(
         candyAmPaint.color = Color.parseColor("#E6E6E6")
         candyColonPaint.color = Color.parseColor("#E6E6E6")
         candyColonPaint.style = Paint.Style.FILL
+
+        bigTymPaint1.typeface = fredokaFont
+        bigTymPaint1.color = Color.parseColor("#0083EA")
+        bigTymPaint1.alpha = 255
+
+        bigTymPaint2.typeface = fredokaFont
+        bigTymPaint2.color = Color.parseColor("#4CB0FD")
+        bigTymPaint2.alpha = 204 // 80% opacity for 2nd digit of hrs and mins
+
+        bigTymColonPaint.color = Color.parseColor("#E6E6E6")
+        bigTymColonPaint.style = Paint.Style.FILL
+
+        bigTymAmPaint.typeface = fredokaFont
+        bigTymAmPaint.color = Color.parseColor("#FFFFFF")
     }
 
     override fun onAttachedToWindow() {
@@ -424,10 +448,109 @@ class TockClockView @JvmOverloads constructor(
             ThemeStyle.POPPINS -> drawPoppinsClock(canvas, w, h, d0, d1, d2, d3, period)
             ThemeStyle.TOCK_BLOOM -> drawBloomClock(canvas, w, h, d0, d1, d2, d3, period, cal)
             ThemeStyle.CANDY_CLOCK -> drawCandyClock(canvas, w, h, d0, d1, d2, d3, period)
+            ThemeStyle.BIG_TYM_ENERGY -> drawBigTymEnergyClock(canvas, w, h, d0, d1, d2, d3, period)
             else -> drawDotMatrixClock(canvas, w, h, d0, d1, d2, d3, period, cal)
         }
 
         canvas.restore()
+    }
+
+    // ── Theme 5: Big Tym Energy Clock ─────────────────────────────
+    private fun drawBigTymEnergyClock(
+        canvas: Canvas,
+        w: Float,
+        h: Float,
+        d0: Int,
+        d1: Int,
+        d2: Int,
+        d3: Int,
+        period: String?
+    ) {
+        val density = resources.displayMetrics.density
+        val isLandscape = w > h
+
+        val d0Str = d0.toString()
+        val d1Str = d1.toString()
+        val d2Str = d2.toString()
+        val d3Str = d3.toString()
+
+        val availableW = w * (if (isLandscape) 0.88f else 0.86f)
+        val availableH = h * (if (isLandscape) 0.72f else 0.62f)
+
+        val testSize = 250f * density
+        bigTymPaint1.textSize = testSize
+        bigTymPaint2.textSize = testSize
+
+        val fm = bigTymPaint1.fontMetrics
+        val digitH = fm.descent - fm.ascent
+
+        val rawW0 = bigTymPaint1.measureText(d0Str)
+        val rawW1 = bigTymPaint2.measureText(d1Str)
+        val rawW2 = bigTymPaint1.measureText(d2Str)
+        val rawW3 = bigTymPaint2.measureText(d3Str)
+
+        val overlapDigits = digitH * 0.10f
+        val colonR = digitH * 0.115f
+        val colonOverlap = colonR * 0.50f
+
+        val rawTotalW = rawW0 + (rawW1 - overlapDigits) + (rawW2 - colonOverlap) + (rawW3 - overlapDigits)
+
+        val scale = min(availableW / rawTotalW, availableH / digitH)
+        val finalFontSize = testSize * scale
+        bigTymPaint1.textSize = finalFontSize
+        bigTymPaint2.textSize = finalFontSize
+
+        val finalFm = bigTymPaint1.fontMetrics
+        val finalDigitH = finalFm.descent - finalFm.ascent
+        val baselineY = (h / 2f) - (finalFm.ascent + finalFm.descent) / 2f
+
+        val fw0 = bigTymPaint1.measureText(d0Str)
+        val fw1 = bigTymPaint2.measureText(d1Str)
+        val fw2 = bigTymPaint1.measureText(d2Str)
+        val fw3 = bigTymPaint2.measureText(d3Str)
+
+        val fOverlapDigits = finalDigitH * 0.10f
+        val fColonR = finalDigitH * 0.115f
+        val fColonOverlap = fColonR * 0.50f
+
+        // Position colon exactly in the horizontal center
+        val colonCenterX = w / 2f
+
+        // d1 (2nd digit of hours) overlaps colon: its right edge is at colonCenterX + fColonOverlap
+        val d1Right = colonCenterX + fColonOverlap
+        val d1X = d1Right - fw1
+        val d0X = d1X - fw0 + fOverlapDigits
+
+        // d2 (1st digit of minutes) overlaps colon: its left edge is at colonCenterX - fColonOverlap
+        val d2X = colonCenterX - fColonOverlap
+        val d3X = d2X + fw2 - fOverlapDigits
+
+        // 1. Draw d0 (100% opacity #0083EA)
+        drawAnimatedTextDigit(canvas, 0, d0, d0X, baselineY, bigTymPaint1, fw0, finalDigitH)
+
+        // 2. Draw d1 (80% opacity #4CB0FD, overlaps d0)
+        drawAnimatedTextDigit(canvas, 1, d1, d1X, baselineY, bigTymPaint2, fw1, finalDigitH)
+
+        // 3. Draw d2 (100% opacity #0083EA)
+        drawAnimatedTextDigit(canvas, 2, d2, d2X, baselineY, bigTymPaint1, fw2, finalDigitH)
+
+        // 4. Draw d3 (80% opacity #4CB0FD, overlaps d2)
+        drawAnimatedTextDigit(canvas, 3, d3, d3X, baselineY, bigTymPaint2, fw3, finalDigitH)
+
+        // 5. Draw Colon (Two #E6E6E6 dots on top of digits)
+        val dotOffset = finalDigitH * 0.18f
+        canvas.drawCircle(colonCenterX, (h / 2f) - dotOffset, fColonR, bigTymColonPaint)
+        canvas.drawCircle(colonCenterX, (h / 2f) + dotOffset, fColonR, bigTymColonPaint)
+
+        // 6. AM at top right (above d3)
+        if (isPreview || period != null) {
+            val amText = if (isPreview) "AM" else period ?: "AM"
+            bigTymAmPaint.textSize = finalFontSize * 0.13f
+            val amW = bigTymAmPaint.measureText(amText)
+            val amX = d3X + fw3 - amW
+            val amY = baselineY + finalFm.ascent - (2f * density)
+            canvas.drawText(amText, min(amX, w - (12f * density) - amW), max(amY, 22f * density), bigTymAmPaint)
+        }
     }
 
     // ── Theme 4: Candy Clock ─────────────────────────────────────

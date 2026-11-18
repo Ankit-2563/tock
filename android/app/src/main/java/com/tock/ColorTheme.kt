@@ -6,7 +6,8 @@ enum class ThemeStyle {
     DOT_MATRIX,
     POPPINS,
     TOCK_BLOOM,
-    CANDY_CLOCK
+    CANDY_CLOCK,
+    BIG_TYM_ENERGY
 }
 
 data class ColorTheme(
@@ -64,7 +65,18 @@ data class ColorTheme(
             style = ThemeStyle.CANDY_CLOCK
         )
 
-        val ALL = listOf(CLASSIC, POPPINS, TOCK_BLOOM, CANDY_CLOCK)
+        val BIG_TYM_ENERGY = ColorTheme(
+            id = "big_tym_energy",
+            name = "big tym energy",
+            background = Color.parseColor("#000000"),
+            digitColor = Color.parseColor("#0083EA"),
+            colonColor = Color.parseColor("#E6E6E6"),
+            metaColor = Color.parseColor("#4CB0FD"),
+            periodColor = Color.parseColor("#E6E6E6"),
+            style = ThemeStyle.BIG_TYM_ENERGY
+        )
+
+        val ALL = listOf(CLASSIC, POPPINS, TOCK_BLOOM, CANDY_CLOCK, BIG_TYM_ENERGY)
 
         fun byId(id: String): ColorTheme = ALL.firstOrNull { it.id == id } ?: CLASSIC
     }
