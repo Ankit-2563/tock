@@ -33,6 +33,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        TockAudioPlayer.init(this)
 
         val density = resources.displayMetrics.density
         val margin8 = (8 * density).toInt()

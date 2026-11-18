@@ -82,46 +82,6 @@ class TockClockView @JvmOverloads constructor(
     private var burnInOffsetX = 0f
     private var burnInOffsetY = 0f
 
-    // ── Acoustic Sound Feedback ──────────────────────────────────
-    private var soundPool: SoundPool? = null
-    private var tickSoundId = 0
-    private var hourSoundId = 0
-    private var soundsLoaded = false
-
-    private fun initAudio() {
-        if (isPreview || soundPool != null) return
-        try {
-            val attrs = AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .build()
-            soundPool = SoundPool.Builder()
-                .setMaxStreams(2)
-                .setAudioAttributes(attrs)
-                .build().apply {
-                    setOnLoadCompleteListener { _, _, status ->
-                        if (status == 0) soundsLoaded = true
-                    }
-                    tickSoundId = load(context, R.raw.tick_minute, 1)
-                    hourSoundId = load(context, R.raw.chime_hour, 1)
-                }
-        } catch (_: Exception) {}
-    }
-
-    private fun playMinuteSound() {
-        if (!soundsLoaded || !TockPreferences.isSoundEnabled(context)) return
-        try {
-            soundPool?.play(tickSoundId, 0.70f, 0.70f, 1, 0, 1.0f)
-        } catch (_: Exception) {}
-    }
-
-    private fun playHourSound() {
-        if (!soundsLoaded || !TockPreferences.isSoundEnabled(context)) return
-        try {
-            soundPool?.play(hourSoundId, 0.90f, 0.90f, 1, 0, 1.0f)
-        } catch (_: Exception) {}
-    }
-
     // Fonts
     private val nothingFont: Typeface = Typeface.createFromAsset(context.assets, "fonts/NothingFont5x7.ttf")
     private val poppinsFont: Typeface = Typeface.createFromAsset(context.assets, "fonts/Poppins-Regular.ttf")
@@ -272,7 +232,7 @@ class TockClockView @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         if (!isPreview) {
-            initAudio()
+            TockAudioPlayer.init(context)
             handler.post(tickRunnable)
             try {
                 context.registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
@@ -286,9 +246,6 @@ class TockClockView @JvmOverloads constructor(
         if (!isPreview) {
             handler.removeCallbacks(tickRunnable)
             try { context.unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
-            soundPool?.release()
-            soundPool = null
-            soundsLoaded = false
         }
     }
 
@@ -317,9 +274,9 @@ class TockClockView @JvmOverloads constructor(
 
         if (anyChanged) {
             if (hourChanged) {
-                playHourSound()
+                TockAudioPlayer.playHourChime(context)
             } else {
-                playMinuteSound()
+                TockAudioPlayer.playMinuteTick(context)
             }
             digitAnimator?.cancel()
             digitAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
