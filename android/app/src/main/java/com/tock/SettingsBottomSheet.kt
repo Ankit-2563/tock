@@ -147,6 +147,11 @@ class SettingsBottomSheet : BottomSheetDialogFragment() {
         }
 
         divider()
+        switchRow("Acoustic Chime & Ticks", "Plays a gentle 'tak-tak' on minutes and a warm chime on hours", TockPreferences.isSoundEnabled(ctx)) {
+            TockPreferences.setSoundEnabled(ctx, it)
+        }
+
+        divider()
         switchRow("Low Power Mode", "Dims display brightness and reduces tick frequency", TockPreferences.isLowPower(ctx)) {
             TockPreferences.setLowPower(ctx, it)
         }

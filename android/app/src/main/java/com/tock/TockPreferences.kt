@@ -12,6 +12,7 @@ object TockPreferences {
     private const val KEY_BURN_IN_PROTECTION = "burn_in_protection"
     private const val KEY_LOW_POWER = "low_power"
     private const val KEY_FAVORITES = "favorites"
+    private const val KEY_SOUND_ENABLED = "sound_enabled"
 
     private fun prefs(ctx: Context): SharedPreferences =
         ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -30,6 +31,9 @@ object TockPreferences {
 
     fun isLowPower(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_LOW_POWER, false)
     fun setLowPower(ctx: Context, v: Boolean) = prefs(ctx).edit().putBoolean(KEY_LOW_POWER, v).apply()
+
+    fun isSoundEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_SOUND_ENABLED, true)
+    fun setSoundEnabled(ctx: Context, v: Boolean) = prefs(ctx).edit().putBoolean(KEY_SOUND_ENABLED, v).apply()
 
     fun getFavorites(ctx: Context): Set<String> =
         prefs(ctx).getStringSet(KEY_FAVORITES, setOf("classic", "poppins", "tock_bloom", "candy_clock", "big_tym_energy"))
