@@ -44,6 +44,7 @@ class ThemePreviewCard(
 
         // Background
         setBackgroundColor(theme.background)
+        contentDescription = theme.name
 
         // Add the mini clock view inside the card
         addView(clockView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))

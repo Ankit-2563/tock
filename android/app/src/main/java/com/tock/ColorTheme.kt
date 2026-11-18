@@ -20,7 +20,7 @@ data class ColorTheme(
     companion object {
         val CLASSIC = ColorTheme(
             id = "classic",
-            name = "Nothing Dot Matrix",
+            name = "dot dot done",
             background = Color.parseColor("#000000"),
             digitColor = Color.parseColor("#FCFAFE"),
             colonColor = Color.parseColor("#D71921"),
@@ -31,7 +31,7 @@ data class ColorTheme(
 
         val POPPINS = ColorTheme(
             id = "poppins",
-            name = "Poppins Clean",
+            name = "no drama",
             background = Color.parseColor("#000000"),
             digitColor = Color.parseColor("#FCFAFE"),
             colonColor = Color.parseColor("#FCFAFE"),
