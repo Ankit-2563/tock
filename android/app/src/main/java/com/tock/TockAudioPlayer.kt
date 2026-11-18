@@ -42,7 +42,7 @@ object TockAudioPlayer {
         }
     }
 
-    /** Plays aesthetic mechanical double-click ("tak-tak") when a minute passes. */
+    /** Plays gentle, acoustic ambient clock tick when a minute passes. */
     fun playMinuteTick(context: Context) {
         if (!TockPreferences.isSoundEnabled(context)) return
         val appContext = context.applicationContext
@@ -52,7 +52,8 @@ object TockAudioPlayer {
         val pool = soundPool
         if (pool != null && tickSoundId != 0 && isLoaded) {
             try {
-                val streamId = pool.play(tickSoundId, 1.0f, 1.0f, 1, 0, 1.0f)
+                // Soft, ambient surround sound level (not loud or distracting)
+                val streamId = pool.play(tickSoundId, 0.48f, 0.48f, 1, 0, 1.0f)
                 if (streamId != 0) played = true
             } catch (_: Exception) {}
         }
@@ -67,7 +68,7 @@ object TockAudioPlayer {
                             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                             .build()
                     )
-                    setVolume(1.0f, 1.0f)
+                    setVolume(0.48f, 0.48f)
                     setOnCompletionListener { mp -> mp.release() }
                     start()
                 }
@@ -87,7 +88,7 @@ object TockAudioPlayer {
         val pool = soundPool
         if (pool != null && hourSoundId != 0 && isLoaded) {
             try {
-                val streamId = pool.play(hourSoundId, 1.0f, 1.0f, 1, 0, 1.0f)
+                val streamId = pool.play(hourSoundId, 0.52f, 0.52f, 1, 0, 1.0f)
                 if (streamId != 0) played = true
             } catch (_: Exception) {}
         }
@@ -102,7 +103,7 @@ object TockAudioPlayer {
                             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                             .build()
                     )
-                    setVolume(1.0f, 1.0f)
+                    setVolume(0.52f, 0.52f)
                     setOnCompletionListener { mp -> mp.release() }
                     start()
                 }
