@@ -133,6 +133,16 @@ class TockClockView @JvmOverloads constructor(
         }
     }
 
+    // Time tick receiver (fires on the exact second minute changes)
+    private val timeTickReceiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context, intent: Intent) {
+            if (intent.action == Intent.ACTION_TIME_TICK) {
+                updateBurnIn()
+                invalidate()
+            }
+        }
+    }
+
     // Battery receiver
     private val batteryReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
@@ -235,6 +245,7 @@ class TockClockView @JvmOverloads constructor(
             TockAudioPlayer.init(context)
             handler.post(tickRunnable)
             try {
+                context.registerReceiver(timeTickReceiver, IntentFilter(Intent.ACTION_TIME_TICK))
                 context.registerReceiver(batteryReceiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             } catch (_: Exception) {}
         }
@@ -245,7 +256,10 @@ class TockClockView @JvmOverloads constructor(
         digitAnimator?.cancel()
         if (!isPreview) {
             handler.removeCallbacks(tickRunnable)
-            try { context.unregisterReceiver(batteryReceiver) } catch (_: Exception) {}
+            try {
+                context.unregisterReceiver(timeTickReceiver)
+                context.unregisterReceiver(batteryReceiver)
+            } catch (_: Exception) {}
         }
     }
 
